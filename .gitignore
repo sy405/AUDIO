@@ -1,0 +1,73 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ---------- 虚拟环境 ----------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---------- PyInstaller ----------
+build_pyi/
+_build/
+_work/
+*.spec.bak
+Audio2FL.spec
+
+# ---------- 输出与临时文件 ----------
+output/
+test_music/
+*.log
+run_out/
+real_run/
+real_run2/
+tmp/
+t2/
+samples/
+
+# ---------- 模型权重（体积大，用脚本下载）----------
+# 注意: nmp.onnx 是 225 KB，保留在仓库里
+# htdemucs 权重由 demucs 自动下载到 ~/.cache/huggingface
+*.th
+*.pt
+*.pth
+htdemucs_*.onnx
+
+# ---------- 敏感信息 ----------
+.env
+.env.*
+*.key
+*.pem
+secrets.json
+config.local.*
+*token*
+*credential*
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---------- 系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 测试产物 ----------
+test_*.flp
+out_*.flp
+selftest_*.flp
+*.mid
+*_stems/

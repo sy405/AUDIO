@@ -1,0 +1,31 @@
+# Audio2FL 运行依赖
+# Python 3.11 (推荐) 或 3.10 / 3.12
+#
+# 安装:
+#   python -m venv .venv
+#   .venv\Scripts\activate
+#   pip install -r requirements.txt
+
+# --- 分轨 (PyTorch CPU 版) ---
+# 注意: 必须用 CPU 索引源，否则会下载 2GB+ 的 CUDA 版本
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.15.0
+torchaudio==2.11.1
+demucs==4.1.0
+
+# --- 音频读写 ---
+numpy>=2.0
+soundfile>=0.12
+
+# --- MIDI 转谱 ---
+onnxruntime>=1.17
+
+# --- FLP 工程生成 ---
+pyflp>=2.2
+
+# --- GUI ---
+customtkinter>=5.2
+pillow>=10.0
+
+# --- 打包 (可选) ---
+# pyinstaller>=6.0
