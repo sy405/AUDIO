@@ -140,7 +140,7 @@ Audio2FL/
 
 | 环节 | 方案 | 理由 |
 |---|---|---|
-| **分轨** | PyTorch Demucs (FP32, 4 线程) | 比 ONNX FP16 快 37% |
+| **分轨** | PyTorch Demucs (FP32, 4 线程) | 比 ONNX FP16 更快 |
 | **MIDI** | Basic Pitch ONNX | 不依赖 TensorFlow，模型仅 225 KB |
 | **BPM** | 自研节拍检测 | 轻量，实测误差 < 1 BPM |
 | **FLP** | [pyflp](https://github.com/demberto/pyflp) | 纯 Python 读写 FL Studio 工程 |
@@ -148,15 +148,15 @@ Audio2FL/
 
 ### 为什么不用 ONNX 分轨
 
-| 后端 | 精度 | 线程 | 30 秒音频耗时 |
-|---|---|:---:|---:|
-| PyTorch | FP32 | 2 | 70.33 秒 |
-| **PyTorch** | **FP32** | **4** | **52.21 秒** |
-| ONNX Runtime | FP16 | 2 | 83 秒 |
+| 后端 | 精度 | 线程 | 相对速度 |
+|---|---|:---:|---|
+| PyTorch | FP32 | 2 | 基准 |
+| **PyTorch** | **FP32** | **4** | **最快** |
+| ONNX Runtime | FP16 | 2 | 更慢 |
 
 两个因素叠加：线程数 2→4 快 26%；ONNX FP16 在 x86 CPU 上反而更慢（要转 FP32 再算）。
 
-净效果：**PyTorch 4 线程比 ONNX 2 线程快 37%**。
+净效果：**PyTorch + 4 线程是当前最快的组合**。
 
 代价是体积——ONNX 分轨模型 158 MB，PyTorch 运行时 518 MB。
 
