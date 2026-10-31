@@ -1,6 +1,6 @@
 # Audio2FL
 
-> 把一首 mp3 一键拆成 FL Studio 工程。
+> 把 mp3 自动拆成四轨分轨，检测 BPM，转 MIDI，生成 FL Studio 工程。
 
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.15.0-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
@@ -10,15 +10,23 @@
 
 ## 这是什么
 
-Audio2FL 接收一首音频，自动完成五件事：
+把 mp3 自动拆成人声 / 鼓 / 贝斯 / 其他四条分轨，检测 BPM，把旋律转成 MIDI，最后生成可直接在 FL Studio 打开的 `.flp` 工程。
 
-1. **分轨** —— 拆成人声 / 鼓 / 贝斯 / 其他四条音轨
-2. **测速** —— 检测 BPM
-3. **转谱** —— 把旋律转成 MIDI 音符
-4. **鼓点识别** —— 把鼓转成底鼓 / 军鼓 / 镲的 MIDI
-5. **生成工程** —— 输出可直接在 FL Studio 打开的 `.flp` 文件
+> 基于 AI 辅助开发，目前处于初步测试阶段，仅供学习交流。
+>
+> 全部处理在本机完成，不上传任何音频。
 
-它**不会**还原原作者用的音色、和弦编配和混音参数。给你的是一个「可以接着往下做」的分轨工程，不是原工程复刻。
+---
+
+## 后续计划
+
+| 方向 | 说明 |
+|---|---|
+| **Windows 11 适配** | 当前在 Windows 10 测试通过，后续验证 Win11 的兼容性与视觉表现 |
+| **批量处理** | 支持选择整个文件夹，队列式处理多个文件 |
+| **API 接入** | 可选接入云端分离模型，提升复杂混音的分离准确性 |
+| **质量优化** | 增加高精度模型选项（`htdemucs_ft` 等），牺牲速度换质量 |
+| **更多格式** | 支持 m4a / aac / opus 等输入格式 |
 
 ---
 
@@ -72,7 +80,7 @@ Audio2FL 接收一首音频，自动完成五件事：
 
 ```bash
 git clone https://github.com/sy405/AUDIO.git
-cd Audio2FL
+cd AUDIO
 
 python -m venv .venv
 .venv\Scripts\activate        # Windows
@@ -104,13 +112,6 @@ python a2fl_entry.py
 | **输出目录** | 默认 `音乐\Audio2FL` |
 | **FL 模板** | 可选，留空自动用同目录 `template.flp` |
 | **BPM** | 留空自动检测，不准可以手动填 |
-
-### 命令行
-
-```bash
-python -c "from app.toflp.pipeline import Options, run; \
-run(Options(audio='song.mp3', out_dir='out', template='template.flp'))"
-```
 
 ---
 
@@ -154,6 +155,7 @@ Audio2FL/
 ├── a2fl_entry.py            入口
 ├── template.flp             FL 工程模板
 ├── requirements.txt
+├── CHANGELOG.md
 ├── LICENSE
 └── README.md
 ```
@@ -193,6 +195,7 @@ Audio2FL/
 - **FLP 依赖模板** —— 必须提供 `template.flp`，缺失时跳过工程生成
 - **鼓点精度** —— 底鼓 / 军鼓 / 镲的分类有一定误差
 - **人声残留** —— 复杂混音下 vocals 轨可能含有乐器残留
+- **单文件处理** —— 目前一次只能处理一个音频
 
 ---
 
@@ -216,10 +219,6 @@ Audio2FL/
 <summary><b>处理速度能更快吗</b></summary>
 
 当前已用 4 线程（实测比 2 线程快 26%）。换更强的 CPU 耗时大致成正比下降。
-
-想要更快可以考虑：
-- 降低 `overlap`（默认 0.1，改 0 会略快但有轻微接缝）
-- 用 `htdemucs` 以外的轻量模型（质量会降）
 </details>
 
 <details>
@@ -237,8 +236,6 @@ out = apply_model(model, wav.unsqueeze(0), device="cuda", ...)
 ---
 
 ## 致谢
-
-本项目基于以下开源项目构建：
 
 - [Demucs](https://github.com/facebookresearch/demucs) — Meta 的音源分离模型
 - [Basic Pitch](https://github.com/spotify/basic-pitch) — Spotify 的音频转 MIDI 模型
