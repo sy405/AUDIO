@@ -62,7 +62,7 @@ Audio2FL 接收一首音频，自动完成五件事：
 
 ### 方式一：直接使用打包版（推荐）
 
-从 [Releases](https://github.com/YOUR_USERNAME/Audio2FL/releases) 下载 `Audio2FL-v1.0-win64.zip`，解压后双击 `Audio2FL.exe`。
+从 [Releases](https://github.com/sy405/AUDIO/releases) 下载 `Audio2FL-v1.0-win64.zip`，解压后双击 `Audio2FL.exe`。
 
 **不需要安装任何依赖。**
 
@@ -71,7 +71,7 @@ Audio2FL 接收一首音频，自动完成五件事：
 需要 **Python 3.11**（3.10 / 3.12 也可以）：
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Audio2FL.git
+git clone https://github.com/sy405/AUDIO.git
 cd Audio2FL
 
 python -m venv .venv
