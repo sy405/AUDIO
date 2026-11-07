@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Audio2FL - mp3 一键拆成 FL Studio 工程
-
-Liquid Glass GUI (CustomTkinter + Windows Acrylic)
-"""
+"""Audio2FL - Liquid Glass GUI with i18n (zh / en / ja / ko)"""
 from __future__ import annotations
 
 import ctypes
@@ -15,7 +12,8 @@ from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
-# ----------------------------------------------------------------------
+from app.i18n import LANG_NAMES, get_i18n
+
 COL = {
     "bg":         "#0B0F1A",
     "card":       "#161C2E",
@@ -31,14 +29,13 @@ COL = {
     "dim":        "#5C657A",
 }
 
+FONT_TITLE = ("Microsoft YaHei UI", 22, "bold")
 FONT_BOLD  = ("Microsoft YaHei UI", 15, "bold")
-FONT_TITLE = ("Microsoft YaHei UI", 24, "bold")
 FONT_SM    = ("Microsoft YaHei UI", 12)
 FONT_MONO  = ("Consolas", 10)
 
 
-def enable_acrylic(hwnd: int, tint: int = 0xE00B0F1A) -> bool:
-    """Windows 10/11 亚克力模糊"""
+def enable_acrylic(hwnd: int, tint: int = 0xF00B0F1A) -> bool:
     try:
         class AP(ctypes.Structure):
             _fields_ = [("AccentState", ctypes.c_int), ("AccentFlags", ctypes.c_int),
@@ -74,31 +71,29 @@ class Card(ctk.CTkFrame):
 
 
 class App(ctk.CTk):
-    def __init__(self, audio=None):
+    def __init__(self, audio=None, lang=None):
         ctk.set_appearance_mode("dark")
         super().__init__()
-        self.title("Audio2FL  ·  mp3 一键拆成 FL Studio 工程")
 
-        # 适配屏幕: 工作区 1366x728 -> 窗口 920x700
-        sw = self.winfo_screenwidth()
-        sh = self.winfo_screenheight()
-        w = min(920, sw - 80)
-        h = min(700, sh - 80)
-        x = (sw - w) // 2
-        y = max(0, (sh - h) // 2 - 20)
-        self.geometry(f"{w}x{h}+{x}+{y}")
-        self.minsize(820, 600)
-        self.configure(fg_color=COL["bg"])
-
+        self.i18n = get_i18n(lang)
         self._busy = False
         self._t0 = 0.0
+
+        sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        w = min(920, sw - 80)
+        h = min(700, sh - 90)
+        self.geometry("%dx%d+%d+%d" % (w, h, (sw - w) // 2, max(0, (sh - h) // 2 - 20)))
+        self.minsize(820, 600)
+        self.configure(fg_color=COL["bg"])
 
         self.update_idletasks()
         hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
         dark_titlebar(hwnd)
-        enable_acrylic(hwnd, tint=abgr("#0B0F1A", 0xE8))
+        enable_acrylic(hwnd, tint=abgr("#0B0F1A", 0xF0))
 
         self._build()
+        self._retranslate()
+
         if audio:
             self.v_audio.set(audio)
 
@@ -108,15 +103,27 @@ class App(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)
         pad = {"padx": 20}
 
-        # ---- 标题 ----
         head = ctk.CTkFrame(self, fg_color="transparent")
-        head.grid(row=0, column=0, sticky="ew", pady=(14, 10), **pad)
-        ctk.CTkLabel(head, text="Audio2FL", font=FONT_TITLE,
-                     text_color=COL["text"]).pack(side="left")
-        ctk.CTkLabel(head, text="   mp3 → 分轨 · 转谱 · FL Studio 工程",
-                     font=FONT_SM, text_color=COL["muted"]).pack(side="left", pady=(6, 0))
+        head.grid(row=0, column=0, sticky="ew", pady=(14, 8), **pad)
+        head.grid_columnconfigure(1, weight=1)
 
-        # ---- 文件卡片 ----
+        self.lbl_title = ctk.CTkLabel(head, text="Audio2FL", font=FONT_TITLE,
+                                      text_color=COL["text"])
+        self.lbl_title.grid(row=0, column=0, sticky="w")
+
+        self.lbl_sub = ctk.CTkLabel(head, text="", font=FONT_SM, text_color=COL["muted"])
+        self.lbl_sub.grid(row=0, column=1, sticky="w", padx=(8, 0), pady=(6, 0))
+
+        self.opt_lang = ctk.CTkOptionMenu(
+            head, values=[LANG_NAMES[c] for c in self.i18n.available],
+            width=110, height=30, corner_radius=8, font=FONT_SM,
+            fg_color=COL["card_hi"], button_color=COL["border"],
+            button_hover_color=COL["primary"], text_color=COL["text"],
+            dropdown_fg_color=COL["card"], dropdown_text_color=COL["text"],
+            dropdown_hover_color=COL["primary"], command=self._on_lang_change)
+        self.opt_lang.grid(row=0, column=2, sticky="e")
+        self.opt_lang.set(self.i18n.name())
+
         c1 = Card(self)
         c1.grid(row=1, column=0, sticky="ew", pady=(0, 10), **pad)
         c1.grid_columnconfigure(1, weight=1)
@@ -125,24 +132,26 @@ class App(ctk.CTk):
         self.v_out = tk.StringVar(value=os.path.join(os.path.expanduser("~"), "Music", "Audio2FL"))
         self.v_tpl = tk.StringVar()
 
-        for r, (label, var, cmd, ph) in enumerate([
-            ("音频文件", self.v_audio, self._pick_audio, "选择 mp3 / wav / flac"),
-            ("输出目录", self.v_out,   self._pick_out,   ""),
-            ("FL 模板",  self.v_tpl,   self._pick_tpl,   "可选：默认用同目录 template.flp"),
+        self._file_rows = []
+        for r, (key, var, cmd) in enumerate([
+            ("lbl_audio",    self.v_audio, self._pick_audio),
+            ("lbl_outdir",   self.v_out,   self._pick_out),
+            ("lbl_template", self.v_tpl,   self._pick_tpl),
         ]):
-            ctk.CTkLabel(c1, text=label, font=FONT_SM, text_color=COL["muted"],
-                         width=72, anchor="w").grid(row=r, column=0, padx=(16, 6), pady=7, sticky="w")
-            ctk.CTkEntry(c1, textvariable=var, height=34, corner_radius=8,
-                         fg_color=COL["card_hi"], border_color=COL["border"],
-                         text_color=COL["text"], font=FONT_SM,
-                         placeholder_text=ph).grid(row=r, column=1, sticky="ew", pady=7)
-            ctk.CTkButton(c1, text="浏览", command=cmd, width=60, height=34, corner_radius=8,
-                          fg_color=COL["card_hi"], hover_color=COL["border"],
-                          text_color=COL["text"], font=FONT_SM,
-                          border_width=1, border_color=COL["border"]
-                          ).grid(row=r, column=2, padx=(6, 16), pady=7)
+            lb = ctk.CTkLabel(c1, text="", font=FONT_SM, text_color=COL["muted"],
+                              width=76, anchor="w")
+            lb.grid(row=r, column=0, padx=(16, 6), pady=7, sticky="w")
+            en = ctk.CTkEntry(c1, textvariable=var, height=34, corner_radius=8,
+                              fg_color=COL["card_hi"], border_color=COL["border"],
+                              text_color=COL["text"], font=FONT_SM)
+            en.grid(row=r, column=1, sticky="ew", pady=7)
+            bt = ctk.CTkButton(c1, text="", command=cmd, width=62, height=34, corner_radius=8,
+                               fg_color=COL["card_hi"], hover_color=COL["border"],
+                               text_color=COL["text"], font=FONT_SM,
+                               border_width=1, border_color=COL["border"])
+            bt.grid(row=r, column=2, padx=(6, 16), pady=7)
+            self._file_rows.append((key, lb, bt))
 
-        # ---- 选项 ----
         c2 = Card(self)
         c2.grid(row=2, column=0, sticky="ew", pady=(0, 10), **pad)
         opt = ctk.CTkFrame(c2, fg_color="transparent")
@@ -153,28 +162,28 @@ class App(ctk.CTk):
         self.v_drum = tk.BooleanVar(value=True)
         self.v_bpm = tk.StringVar()
 
-        for text, var in (("生成 .flp", self.v_flp), ("生成 .mid", self.v_mid), ("识别鼓点", self.v_drum)):
-            ctk.CTkCheckBox(opt, text=text, variable=var, font=FONT_SM,
-                            text_color=COL["text"], fg_color=COL["primary"],
-                            hover_color=COL["primary_hi"], border_color=COL["border"],
-                            corner_radius=5, checkbox_width=18, checkbox_height=18,
-                            ).pack(side="left", padx=(0, 18))
+        self._checks = []
+        for key, var in (("opt_flp", self.v_flp), ("opt_mid", self.v_mid), ("opt_drums", self.v_drum)):
+            cb = ctk.CTkCheckBox(opt, text="", variable=var, font=FONT_SM,
+                                 text_color=COL["text"], fg_color=COL["primary"],
+                                 hover_color=COL["primary_hi"], border_color=COL["border"],
+                                 corner_radius=5, checkbox_width=18, checkbox_height=18)
+            cb.pack(side="left", padx=(0, 18))
+            self._checks.append((key, cb))
 
-        ctk.CTkLabel(opt, text="BPM", font=FONT_SM,
-                     text_color=COL["muted"]).pack(side="left", padx=(14, 5))
+        self.lbl_bpm = ctk.CTkLabel(opt, text="BPM", font=FONT_SM, text_color=COL["muted"])
+        self.lbl_bpm.pack(side="left", padx=(14, 5))
         ctk.CTkEntry(opt, textvariable=self.v_bpm, width=70, height=30, corner_radius=8,
                      fg_color=COL["card_hi"], border_color=COL["border"],
-                     text_color=COL["text"], font=FONT_SM,
-                     placeholder_text="自动").pack(side="left")
-        ctk.CTkLabel(opt, text="留空自动", font=FONT_SM,
-                     text_color=COL["dim"]).pack(side="left", padx=(6, 0))
+                     text_color=COL["text"], font=FONT_SM).pack(side="left")
+        self.lbl_bpm_hint = ctk.CTkLabel(opt, text="", font=FONT_SM, text_color=COL["dim"])
+        self.lbl_bpm_hint.pack(side="left", padx=(6, 0))
 
-        # ---- 按钮 + 进度 ----
         bar = ctk.CTkFrame(self, fg_color="transparent")
         bar.grid(row=3, column=0, sticky="ew", pady=(0, 8), **pad)
         bar.grid_columnconfigure(0, weight=1)
 
-        self.btn = ctk.CTkButton(bar, text="▶   开始处理", command=self._run,
+        self.btn = ctk.CTkButton(bar, text="", command=self._run,
                                  height=46, corner_radius=12, font=FONT_BOLD,
                                  fg_color=COL["primary"], hover_color=COL["primary_hi"],
                                  text_color="#FFFFFF")
@@ -185,11 +194,9 @@ class App(ctk.CTk):
         self.pbar.grid(row=1, column=0, sticky="ew", pady=(8, 3))
         self.pbar.set(0)
 
-        self.lbl = ctk.CTkLabel(bar, text="就绪", font=FONT_SM,
-                                text_color=COL["muted"], anchor="w")
+        self.lbl = ctk.CTkLabel(bar, text="", font=FONT_SM, text_color=COL["muted"], anchor="w")
         self.lbl.grid(row=2, column=0, sticky="w")
 
-        # ---- 日志 ----
         c3 = Card(self)
         c3.grid(row=4, column=0, sticky="nsew", pady=(0, 10), **pad)
         c3.grid_rowconfigure(0, weight=1)
@@ -205,33 +212,66 @@ class App(ctk.CTk):
         self.log.tag_config("info", foreground=COL["muted"])
         self.log.tag_config("hi", foreground=COL["primary_hi"])
 
-        # ---- 底栏 ----
         foot = ctk.CTkFrame(self, fg_color="transparent")
         foot.grid(row=5, column=0, sticky="ew", pady=(0, 12), **pad)
 
-        ctk.CTkButton(foot, text="打开输出目录", command=self._open_out,
-                      width=120, height=32, corner_radius=8, font=FONT_SM,
-                      fg_color=COL["card_hi"], hover_color=COL["border"],
-                      text_color=COL["text"], border_width=1, border_color=COL["border"]
-                      ).pack(side="left")
-        ctk.CTkLabel(foot, text="提示：也可以把 mp3 拖到 exe 图标上",
-                     font=FONT_SM, text_color=COL["dim"]).pack(side="right")
+        self.btn_out = ctk.CTkButton(foot, text="", command=self._open_out,
+                                     width=124, height=32, corner_radius=8, font=FONT_SM,
+                                     fg_color=COL["card_hi"], hover_color=COL["border"],
+                                     text_color=COL["text"], border_width=1, border_color=COL["border"])
+        self.btn_out.pack(side="left")
+        self.lbl_drag = ctk.CTkLabel(foot, text="", font=FONT_SM, text_color=COL["dim"])
+        self.lbl_drag.pack(side="right")
+
+    # ------------------------------------------------------------------
+    def _retranslate(self):
+        t = self.i18n.t
+        self.title(t("app_title"))
+        self.lbl_sub.configure(text=t("app_subtitle"))
+
+        for (key, lb, btn) in self._file_rows:
+            lb.configure(text=t(key))
+            btn.configure(text=t("btn_browse"))
+
+        for key, cb in self._checks:
+            cb.configure(text=t(key))
+
+        self.lbl_bpm_hint.configure(text=t("hint_bpm"))
+        self.btn.configure(text=t("btn_running") if self._busy else t("btn_start"))
+        self.btn_out.configure(text=t("btn_open_out"))
+        self.lbl_drag.configure(text=t("hint_drag"))
+
+        if not self._busy:
+            self.lbl.configure(text=t("status_ready"), text_color=COL["muted"])
+
+        self.opt_lang.set(self.i18n.name())
+
+    def _on_lang_change(self, name: str):
+        for code, nm in self.i18n.all_lang_names():
+            if nm == name:
+                self.i18n.set(code)
+                break
+        self._retranslate()
+        self._append("— " + name + " —", "info")
 
     # ------------------------------------------------------------------
     def _pick_audio(self):
+        t = self.i18n.t
         p = filedialog.askopenfilename(
-            title="选择音频",
-            filetypes=[("音频", "*.mp3 *.wav *.flac *.ogg"), ("全部", "*.*")])
+            title=t("dlg_pick_audio"),
+            filetypes=[(t("ft_audio"), "*.mp3 *.wav *.flac *.ogg"), (t("ft_all"), "*.*")])
         if p:
             self.v_audio.set(p)
 
     def _pick_out(self):
-        p = filedialog.askdirectory(title="选择输出目录")
+        p = filedialog.askdirectory(title=self.i18n.t("dlg_pick_outdir"))
         if p:
             self.v_out.set(p)
 
     def _pick_tpl(self):
-        p = filedialog.askopenfilename(title="选择 FL 模板", filetypes=[("FL 工程", "*.flp")])
+        p = filedialog.askopenfilename(
+            title=self.i18n.t("dlg_pick_tpl"),
+            filetypes=[(self.i18n.t("ft_flp"), "*.flp")])
         if p:
             self.v_tpl.set(p)
 
@@ -240,7 +280,7 @@ class App(ctk.CTk):
         if d and os.path.isdir(d):
             os.startfile(d)
         else:
-            messagebox.showinfo("提示", "输出目录还不存在。")
+            messagebox.showinfo(self.i18n.t("info"), self.i18n.t("err_out_missing"))
 
     def _append(self, text, tag=None):
         self.log.configure(state="normal")
@@ -248,16 +288,14 @@ class App(ctk.CTk):
         self.log.see("end")
         self.log.configure(state="disabled")
 
-    def _status(self, t, c=None):
-        self.lbl.configure(text=t, text_color=c or COL["muted"])
-
     # ------------------------------------------------------------------
     def _run(self):
+        t = self.i18n.t
         if self._busy:
             return
         audio = self.v_audio.get().strip()
         if not audio or not os.path.exists(audio):
-            messagebox.showwarning("缺少音频", "请先选择要处理的音频文件。")
+            messagebox.showwarning(t("err_no_audio_t"), t("err_no_audio"))
             return
 
         out = self.v_out.get().strip() or os.path.join(os.path.dirname(audio), "Audio2FL_out")
@@ -268,22 +306,21 @@ class App(ctk.CTk):
             try:
                 float(bpm)
             except ValueError:
-                messagebox.showwarning("BPM 无效", "BPM 需要是数字，或留空自动检测。")
+                messagebox.showwarning(t("err_bpm_t"), t("err_bpm"))
                 return
 
         self._busy = True
         self._t0 = time.time()
-        self.btn.configure(state="disabled", text="处理中…")
+        self.btn.configure(state="disabled", text=t("btn_running"))
         self.pbar.set(0)
         self._append("─" * 56, "info")
-        self._append(f"输入: {audio}", "hi")
-        self._append(f"输出: {out}", "hi")
+        self._append("%s: %s" % (t("lbl_audio"), audio), "hi")
+        self._append("%s: %s" % (t("lbl_outdir"), out), "hi")
 
         threading.Thread(target=self._worker, args=(audio, out, bpm), daemon=True).start()
 
     def _worker(self, audio, out, bpm):
         try:
-            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             from app.toflp.pipeline import Options, run
 
             tpl = self.v_tpl.get().strip()
@@ -310,45 +347,49 @@ class App(ctk.CTk):
             self.after(0, lambda: self._err(str(e), tb))
 
     def _prog(self, msg, frac):
+        t = self.i18n.t
         self.pbar.set(max(0.0, min(1.0, frac)))
-        elapsed = time.time() - self._t0
+        el = time.time() - self._t0
         if frac > 0.05:
-            eta = elapsed / frac * (1 - frac)
-            tail = f"  已用 {elapsed:.0f}s / 预计剩 {eta:.0f}s"
+            eta = el / frac * (1 - frac)
+            tail = "  " + t("status_elapsed", n=int(el)) + " / " + t("status_eta", n=int(eta))
         else:
-            tail = f"  已用 {elapsed:.0f}s"
-        self._status(f"{frac*100:5.1f}%   {msg}{tail}")
-        self._append(f"[{frac*100:5.1f}%] {msg}")
+            tail = "  " + t("status_elapsed", n=int(el))
+        self.lbl.configure(text="%.1f%%   %s%s" % (frac * 100, msg, tail), text_color=COL["muted"])
+        self._append("[%.1f%%] %s" % (frac * 100, msg))
 
     def _done(self, res):
+        t = self.i18n.t
         self.pbar.set(1)
         total = time.time() - self._t0
-        self._status(f"完成，耗时 {total:.1f} 秒", COL["success"])
-        for line in (res.log or []):
+        self.lbl.configure(text=t("status_done", n=round(total, 1)), text_color=COL["success"])
+        for line in (getattr(res, "log", None) or []):
             self._append(line, "ok")
-        self._append(f"✓ 全部完成（{total:.1f} 秒）", "ok")
         self._busy = False
-        self.btn.configure(state="normal", text="▶   开始处理")
+        self.btn.configure(state="normal", text=t("btn_start"))
 
     def _err(self, msg, tb):
-        self._status("出错了", COL["error"])
-        self._append("✗ " + msg, "err")
+        t = self.i18n.t
+        self.lbl.configure(text=t("status_error"), text_color=COL["error"])
+        self._append("x " + msg, "err")
         for line in tb.splitlines()[-5:]:
             self._append("  " + line, "err")
         self._busy = False
-        self.btn.configure(state="normal", text="▶   开始处理")
-        messagebox.showerror("处理失败", msg)
+        self.btn.configure(state="normal", text=t("btn_start"))
+        messagebox.showerror(t("err_fail"), msg)
 
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     audio = None
+    lang = None
     for a in argv:
-        if a.lower().endswith((".mp3", ".wav", ".flac", ".ogg")) and os.path.exists(a):
+        low = a.lower()
+        if low.startswith("--lang="):
+            lang = low.split("=", 1)[1]
+        elif low.endswith((".mp3", ".wav", ".flac", ".ogg")) and os.path.exists(a):
             audio = a
-            break
-    app = App(audio)
-    app.mainloop()
+    App(audio, lang).mainloop()
     return 0
 
 

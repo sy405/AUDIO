@@ -21,6 +21,26 @@ Progress = Callable[[str, float], None]  # (message, fraction 0..1)
 DEMUCS_THREADS = 4
 
 
+def pick_device() -> str:
+    """自动选择推理设备：cuda > mps > cpu。
+
+    可用环境变量 A2FL_DEVICE 强制指定（cpu / cuda / mps）。
+    """
+    forced = os.environ.get("A2FL_DEVICE", "").strip().lower()
+    if forced in ("cpu", "cuda", "mps"):
+        return forced
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda"
+        mps = getattr(torch.backends, "mps", None)
+        if mps is not None and mps.is_available():
+            return "mps"
+    except Exception:
+        pass
+    return "cpu"
+
+
 @dataclass
 class Options:
     audio: str
@@ -105,7 +125,9 @@ def _separate(audio: str, out_dir: str, report: Progress) -> dict:
     from demucs.apply import apply_model
     from demucs.pretrained import get_model
 
-    torch.set_num_threads(DEMUCS_THREADS)
+    device = pick_device()
+    if device == "cpu":
+        torch.set_num_threads(DEMUCS_THREADS)
 
     report("分离音轨：加载模型…", 0.10)
     model = get_model("htdemucs")
@@ -135,7 +157,7 @@ def _separate(audio: str, out_dir: str, report: Progress) -> dict:
     with torch.no_grad():
         out = apply_model(
             model, wav.unsqueeze(0),
-            device="cpu",
+            device=device,
             shifts=0,
             overlap=0.1,
             progress=False,
