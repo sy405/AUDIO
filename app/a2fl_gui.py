@@ -78,6 +78,8 @@ class App(ctk.CTk):
         self.i18n = get_i18n(lang)
         self._busy = False
         self._t0 = 0.0
+        self._cancel = False
+        self._files: list[str] = []
 
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         w = min(920, sw - 80)
@@ -92,12 +94,29 @@ class App(ctk.CTk):
         enable_acrylic(hwnd, tint=abgr("#0B0F1A", 0xF0))
 
         self._build()
+        self._load_templates()
         self._retranslate()
 
         if audio:
             self.v_audio.set(audio)
 
+        # 先让窗口真正画出来，再撤掉启动画面，避免出现空白
+        self.update_idletasks()
+        self.update()
+        self.after(120, self._dismiss_splash)
+
     # ------------------------------------------------------------------
+    def _dismiss_splash(self):
+        """关闭 PyInstaller --splash 启动画面。
+
+        必须显式调用，否则那层画面会一直停在桌面上。
+        """
+        try:
+            import pyi_splash  # type: ignore
+            pyi_splash.close()
+        except Exception:
+            pass
+
     def _build(self):
         self.grid_rowconfigure(4, weight=1)
         self.grid_columnconfigure(0, weight=1)
@@ -124,6 +143,10 @@ class App(ctk.CTk):
         self.opt_lang.grid(row=0, column=2, sticky="e")
         self.opt_lang.set(self.i18n.name())
 
+        # 语言变了，模板显示名也要跟着变
+        if hasattr(self, "tpl_menu"):
+            self._load_templates()
+
         c1 = Card(self)
         c1.grid(row=1, column=0, sticky="ew", pady=(0, 10), **pad)
         c1.grid_columnconfigure(1, weight=1)
@@ -133,6 +156,7 @@ class App(ctk.CTk):
         self.v_tpl = tk.StringVar()
 
         self._file_rows = []
+        self._row_btns = []
         for r, (key, var, cmd) in enumerate([
             ("lbl_audio",    self.v_audio, self._pick_audio),
             ("lbl_outdir",   self.v_out,   self._pick_out),
@@ -149,8 +173,29 @@ class App(ctk.CTk):
                                fg_color=COL["card_hi"], hover_color=COL["border"],
                                text_color=COL["text"], font=FONT_SM,
                                border_width=1, border_color=COL["border"])
-            bt.grid(row=r, column=2, padx=(6, 16), pady=7)
+            bt.grid(row=r, column=2, padx=(6, 4), pady=7)
             self._file_rows.append((key, lb, bt))
+            self._row_btns.append(bt)
+            if key == "lbl_template":
+                # 模板行额外加一个下拉框
+                bt.grid_remove()
+                self.tpl_menu = ctk.CTkOptionMenu(
+                    c1, values=["—"], width=170, height=34, corner_radius=8, font=FONT_SM,
+                    fg_color=COL["card_hi"], button_color=COL["border"],
+                    button_hover_color=COL["primary"], text_color=COL["text"],
+                    dropdown_fg_color=COL["card"], dropdown_text_color=COL["text"],
+                    dropdown_hover_color=COL["primary"], command=self._on_tpl_change)
+                self.tpl_menu.grid(row=r, column=2, padx=(6, 4), pady=7)
+                bt.grid(row=r, column=3, padx=(0, 16), pady=7)
+                self._tpl_map = {}
+            if key == "lbl_audio":
+                self.btn_folder = ctk.CTkButton(
+                    c1, text="", command=self._pick_folder, width=76, height=34,
+                    corner_radius=8, fg_color=COL["card_hi"], hover_color=COL["primary"],
+                    text_color=COL["text"], font=FONT_SM,
+                    border_width=1, border_color=COL["border"])
+                self.btn_folder.grid(row=r, column=3, padx=(0, 16), pady=7)
+                c1.grid_columnconfigure(2, weight=0)
 
         c2 = Card(self)
         c2.grid(row=2, column=0, sticky="ew", pady=(0, 10), **pad)
@@ -163,7 +208,9 @@ class App(ctk.CTk):
         self.v_bpm = tk.StringVar()
 
         self._checks = []
-        for key, var in (("opt_flp", self.v_flp), ("opt_mid", self.v_mid), ("opt_drums", self.v_drum)):
+        self.v_hq = tk.BooleanVar(value=False)
+        for key, var in (("opt_flp", self.v_flp), ("opt_mid", self.v_mid),
+                         ("opt_drums", self.v_drum), ("opt_hq", self.v_hq)):
             cb = ctk.CTkCheckBox(opt, text="", variable=var, font=FONT_SM,
                                  text_color=COL["text"], fg_color=COL["primary"],
                                  hover_color=COL["primary_hi"], border_color=COL["border"],
@@ -183,11 +230,23 @@ class App(ctk.CTk):
         bar.grid(row=3, column=0, sticky="ew", pady=(0, 8), **pad)
         bar.grid_columnconfigure(0, weight=1)
 
-        self.btn = ctk.CTkButton(bar, text="", command=self._run,
+        btnrow = ctk.CTkFrame(bar, fg_color="transparent")
+        btnrow.grid(row=0, column=0, sticky="ew")
+        btnrow.grid_columnconfigure(0, weight=1)
+
+        self.btn = ctk.CTkButton(btnrow, text="", command=self._run,
                                  height=46, corner_radius=12, font=FONT_BOLD,
                                  fg_color=COL["primary"], hover_color=COL["primary_hi"],
                                  text_color="#FFFFFF")
         self.btn.grid(row=0, column=0, sticky="ew")
+
+        self.btn_cancel = ctk.CTkButton(btnrow, text="", command=self._do_cancel,
+                                        width=96, height=46, corner_radius=12, font=FONT_BOLD,
+                                        fg_color=COL["card_hi"], hover_color=COL["error"],
+                                        text_color=COL["text"],
+                                        border_width=1, border_color=COL["border"],
+                                        state="disabled")
+        self.btn_cancel.grid(row=0, column=1, padx=(8, 0), sticky="e")
 
         self.pbar = ctk.CTkProgressBar(bar, height=5, corner_radius=3,
                                        fg_color=COL["card"], progress_color=COL["primary"])
@@ -238,8 +297,11 @@ class App(ctk.CTk):
 
         self.lbl_bpm_hint.configure(text=t("hint_bpm"))
         self.btn.configure(text=t("btn_running") if self._busy else t("btn_start"))
+        self.btn_cancel.configure(text=t("btn_cancel"))
         self.btn_out.configure(text=t("btn_open_out"))
         self.lbl_drag.configure(text=t("hint_drag"))
+        if hasattr(self, "btn_folder"):
+            self.btn_folder.configure(text=t("btn_pick_dir"))
 
         if not self._busy:
             self.lbl.configure(text=t("status_ready"), text_color=COL["muted"])
@@ -262,6 +324,61 @@ class App(ctk.CTk):
             filetypes=[(t("ft_audio"), "*.mp3 *.wav *.flac *.ogg"), (t("ft_all"), "*.*")])
         if p:
             self.v_audio.set(p)
+
+    def _load_templates(self):
+        """填充模板下拉框。"""
+        try:
+            from app.toflp.pipeline import list_templates
+            found = list_templates()
+        except Exception:
+            found = []
+        self._tpl_map = {}
+        vals = []
+        t = self.i18n.t
+        if found:
+            for key, path in found:
+                # "@default" 是内置模板的占位键，按当前语言显示
+                disp = t("tpl_default") if key == "@default" else key
+                # 同名时加后缀避免覆盖
+                if disp in self._tpl_map:
+                    disp = disp + " 2"
+                self._tpl_map[disp] = path
+                vals.append(disp)
+        else:
+            vals = [t("tpl_none")]
+        self.tpl_menu.configure(values=vals)
+        self.tpl_menu.set(vals[0])
+        self.v_tpl.set(found[0][1] if found else "")
+
+    def _on_tpl_change(self, name):
+        p = self._tpl_map.get(name, "")
+        self.v_tpl.set(p)
+        if p:
+            self._append(self.i18n.t("lbl_template") + ": " + os.path.basename(p), "info")
+
+    def _pick_folder(self):
+        """选文件夹 = 批量模式。"""
+        d = filedialog.askdirectory(title=self.i18n.t("dlg_pick_outdir"))
+        if not d:
+            return
+        exts = (".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac")
+        found = sorted(
+            os.path.join(d, f) for f in os.listdir(d)
+            if f.lower().endswith(exts) and os.path.isfile(os.path.join(d, f)))
+        if not found:
+            messagebox.showinfo(self.i18n.t("info"), self.i18n.t("batch_none"))
+            return
+        self._files = found
+        self.v_audio.set(d)
+        self._append(self.i18n.t("batch_hint", n=len(found)), "hi")
+        for f in found[:12]:
+            self._append("  · " + os.path.basename(f), "info")
+        if len(found) > 12:
+            self._append("  … +%d" % (len(found) - 12), "info")
+
+    def _do_cancel(self):
+        self._cancel = True
+        self._append(self.i18n.t("status_cancel"), "err")
 
     def _pick_out(self):
         p = filedialog.askdirectory(title=self.i18n.t("dlg_pick_outdir"))
@@ -309,17 +426,34 @@ class App(ctk.CTk):
                 messagebox.showwarning(t("err_bpm_t"), t("err_bpm"))
                 return
 
+        targets = list(self._files) if self._files else [audio]
+        if os.path.isdir(audio) and not self._files:
+            exts = (".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac")
+            targets = sorted(
+                os.path.join(audio, f) for f in os.listdir(audio)
+                if f.lower().endswith(exts) and os.path.isfile(os.path.join(audio, f)))
+            if not targets:
+                messagebox.showwarning(t("err_no_audio_t"), t("batch_none"))
+                return
+
         self._busy = True
+        self._cancel = False
         self._t0 = time.time()
         self.btn.configure(state="disabled", text=t("btn_running"))
+        self.btn_cancel.configure(state="normal")
         self.pbar.set(0)
         self._append("─" * 56, "info")
-        self._append("%s: %s" % (t("lbl_audio"), audio), "hi")
+        if len(targets) > 1:
+            self._append(t("batch_hint", n=len(targets)), "hi")
+        else:
+            self._append("%s: %s" % (t("lbl_audio"), targets[0]), "hi")
         self._append("%s: %s" % (t("lbl_outdir"), out), "hi")
 
-        threading.Thread(target=self._worker, args=(audio, out, bpm), daemon=True).start()
+        threading.Thread(target=self._worker,
+                         args=(targets, out, bpm, self.v_hq.get()),
+                         daemon=True).start()
 
-    def _worker(self, audio, out, bpm):
+    def _worker(self, targets, out, bpm, hq):
         try:
             from app.toflp.pipeline import Options, run
 
@@ -334,13 +468,36 @@ class App(ctk.CTk):
                         tpl = cand
                         break
 
-            opts = Options(audio=audio, out_dir=out, template=tpl,
-                           make_midi=self.v_mid.get(), make_flp=self.v_flp.get(),
-                           make_drums=self.v_drum.get(),
-                           bpm_override=float(bpm) if bpm else None)
+            model_name = "htdemucs_ft" if hq else "htdemucs"
+            total = len(targets)
+            ok = fail = 0
+            last_res = None
 
-            res = run(opts, progress=lambda m, f: self.after(0, lambda: self._prog(m, f)))
-            self.after(0, lambda: self._done(res))
+            for i, audio in enumerate(targets, 1):
+                if self._cancel:
+                    break
+                name = os.path.basename(audio)
+                if total > 1:
+                    self.after(0, lambda i=i, n=total, nm=name:
+                               self._append(self.i18n.t("pr_batch", i=i, n=n, name=nm), "hi"))
+
+                opts = Options(audio=audio, out_dir=out, template=tpl,
+                               make_midi=self.v_mid.get(), make_flp=self.v_flp.get(),
+                               make_drums=self.v_drum.get(),
+                               bpm_override=float(bpm) if bpm else None,
+                               model_name=model_name)
+
+                try:
+                    res = run(opts,
+                              progress=lambda m, f: self.after(0, lambda m=m, f=f: self._prog(m, f)),
+                              cancel=lambda: self._cancel)
+                    last_res = res
+                    ok += 1
+                except Exception as exc:
+                    fail += 1
+                    self.after(0, lambda e=str(exc): self._append("x " + e, "err"))
+
+            self.after(0, lambda: self._done(last_res, total, ok, fail))
         except Exception as e:
             import traceback
             tb = traceback.format_exc()
@@ -358,15 +515,25 @@ class App(ctk.CTk):
         self.lbl.configure(text="%.1f%%   %s%s" % (frac * 100, msg, tail), text_color=COL["muted"])
         self._append("[%.1f%%] %s" % (frac * 100, msg))
 
-    def _done(self, res):
+    def _done(self, res, total=1, ok=1, fail=0):
         t = self.i18n.t
         self.pbar.set(1)
-        total = time.time() - self._t0
-        self.lbl.configure(text=t("status_done", n=round(total, 1)), text_color=COL["success"])
+        el = time.time() - self._t0
+        if self._cancel:
+            self.lbl.configure(text=t("status_cancel"), text_color=COL["warn"])
+        elif total > 1:
+            self.lbl.configure(text=t("batch_done", ok=ok, fail=fail, n=round(el, 1)),
+                               text_color=COL["success"] if fail == 0 else COL["warn"])
+            self._append(t("batch_done", ok=ok, fail=fail, n=round(el, 1)),
+                         "ok" if fail == 0 else "err")
+        else:
+            self.lbl.configure(text=t("status_done", n=round(el, 1)), text_color=COL["success"])
         for line in (getattr(res, "log", None) or []):
             self._append(line, "ok")
         self._busy = False
+        self._files = []
         self.btn.configure(state="normal", text=t("btn_start"))
+        self.btn_cancel.configure(state="disabled")
 
     def _err(self, msg, tb):
         t = self.i18n.t
@@ -376,6 +543,7 @@ class App(ctk.CTk):
             self._append("  " + line, "err")
         self._busy = False
         self.btn.configure(state="normal", text=t("btn_start"))
+        self.btn_cancel.configure(state="disabled")
         messagebox.showerror(t("err_fail"), msg)
 
 

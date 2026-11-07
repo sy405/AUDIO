@@ -17,12 +17,32 @@ def _setup_paths():
     return base
 
 
+def _close_splash():
+    """关闭 PyInstaller 启动画面。
+
+    --splash 生成的画面必须显式关闭，否则会一直留在桌面上。
+    """
+    try:
+        import pyi_splash  # type: ignore
+        pyi_splash.close()
+    except Exception:
+        pass
+
+
 def main():
     base = _setup_paths()
     try:
         from app.a2fl_gui import main as gui_main
     except ImportError:
         from a2fl_gui import main as gui_main
+
+    # 兜底：如果 GUI 里没来得及关，这里再关一次
+    try:
+        from app.a2fl_gui import App as _App  # noqa: F401
+    except Exception:
+        pass
+
+    _close_splash()
     return gui_main()
 
 

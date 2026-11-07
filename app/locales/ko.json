@@ -45,5 +45,20 @@
   "err_fail": "처리 실패",
   "err_out_missing": "출력 폴더가 아직 없습니다.",
   "info": "알림",
-  "lbl_lang": "언어"
+  "lbl_lang": "언어",
+  "opt_hq": "고품질 모델 (4배 느림, GPU 권장)",
+  "btn_cancel": "■  취소",
+  "btn_pick_dir": "폴더 선택",
+  "lbl_batch": "일괄 처리",
+  "batch_hint": "{n}개 선택",
+  "batch_none": "선택 없음",
+  "pr_batch": "배치 {i}/{n}: {name}",
+  "batch_done": "배치 완료: 성공 {ok} / 실패 {fail}, {n}초",
+  "status_cancel": "취소됨",
+  "btn_add_files": "파일 추가",
+  "btn_clear": "지우기",
+  "lbl_files": "처리할 파일",
+  "tpl_auto": "자동 감지",
+  "tpl_none": "템플릿 없음",
+  "tpl_default": "기본 템플릿"
 }

@@ -51,6 +51,8 @@ class Options:
     make_drums: bool = True
     bpm_override: float | None = None
     keep_stems: bool = True
+    # 分轨模型：htdemucs(快) / htdemucs_ft(高质量, 慢约 4 倍, 建议 GPU)
+    model_name: str = "htdemucs"
 
 
 @dataclass
@@ -87,6 +89,68 @@ def find_model(name: str) -> str | None:
     return None
 
 
+def list_templates() -> list[tuple[str, str]]:
+    """返回可用的 FL 模板 [(显示名, 路径)]。
+
+    搜索顺序：exe 同目录 -> _MEIPASS -> 包内 templates/ -> 当前工作目录
+    """
+    roots = []
+    exe_dir = os.path.dirname(sys.executable)
+    roots.append(exe_dir)
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        roots.append(meipass)
+    roots.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    roots.append(os.getcwd())
+
+    seen = {}
+    for root in roots:
+        if not root or not os.path.isdir(root):
+            continue
+        # 单文件（返回语言无关的 key，显示名交给 GUI 翻译）
+        p = os.path.join(root, "template.flp")
+        if os.path.isfile(p) and p not in seen:
+            seen[p] = "@default"
+        # templates/ 目录里的全部
+        tdir = os.path.join(root, "templates")
+        if os.path.isdir(tdir):
+            for f in sorted(os.listdir(tdir)):
+                if f.lower().endswith(".flp"):
+                    fp = os.path.join(tdir, f)
+                    if fp not in seen:
+                        seen[fp] = os.path.splitext(f)[0]
+    return [(name, path) for path, name in seen.items()]
+
+
+def ensure_template(preferred: str | None = None) -> str | None:
+    """确保有一个可用的模板。
+
+    1. preferred 存在 -> 直接用
+    2. 否则找任意一个可用模板
+    3. 都找不到 -> 从包内复制一份到 exe 目录（自愈）
+    """
+    if preferred and os.path.isfile(preferred):
+        return preferred
+
+    found = list_templates()
+    if found:
+        return found[0][1]
+
+    # 尝试从 _MEIPASS 恢复
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        src = os.path.join(meipass, "template.flp")
+        if os.path.isfile(src):
+            dst = os.path.join(os.path.dirname(sys.executable), "template.flp")
+            try:
+                import shutil
+                shutil.copy2(src, dst)
+                return dst
+            except Exception:
+                return src
+    return None
+
+
 def available_memory_gb() -> float:
     try:
         import ctypes
@@ -116,7 +180,7 @@ def available_memory_gb() -> float:
 # ----------------------------------------------------------------------
 # 分轨: PyTorch Demucs
 # ----------------------------------------------------------------------
-def _separate(audio: str, out_dir: str, report: Progress) -> dict:
+def _separate(audio: str, out_dir: str, report: Progress, model_name: str = "htdemucs") -> dict:
     """用 PyTorch Demucs 分离四轨, 返回 {stem: (samples, channels) ndarray}"""
     import numpy as np
     import soundfile as sf
@@ -129,8 +193,10 @@ def _separate(audio: str, out_dir: str, report: Progress) -> dict:
     if device == "cpu":
         torch.set_num_threads(DEMUCS_THREADS)
 
-    report("分离音轨：加载模型…", 0.10)
-    model = get_model("htdemucs")
+    _dev = pick_device()
+    _tag = "GPU" if _dev in ("cuda", "mps") else "CPU"
+    report("分离音轨：加载模型 %s（%s）…" % (model_name, _tag), 0.10)
+    model = get_model(model_name)
     model.eval()
 
     sr_model = int(getattr(model, "samplerate", 44100))
@@ -223,6 +289,9 @@ def run(opts: Options, progress: Progress | None = None,
         res.log.append(f"速度检测失败，回退 120 BPM：{exc}")
     if opts.bpm_override:
         res.bpm = opts.bpm_override
+    # 模板自愈：找不到就自动恢复
+    opts.template = ensure_template(opts.template)
+
     check_cancel()
 
     # --- 2. separation ----------------------------------------------
@@ -235,7 +304,7 @@ def run(opts: Options, progress: Progress | None = None,
     stems = {}
     sep_error = None
     try:
-        stems = _separate(opts.audio, work, report)
+        stems = _separate(opts.audio, work, report, model_name=opts.model_name)
     except Exception as exc:
         sep_error = exc
         res.log.append(f"分轨失败：{exc}")

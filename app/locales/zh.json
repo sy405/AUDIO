@@ -45,5 +45,20 @@
   "err_fail": "处理失败",
   "err_out_missing": "输出目录还不存在。",
   "info": "提示",
-  "lbl_lang": "语言"
+  "lbl_lang": "语言",
+  "opt_hq": "高质量模型（慢 4 倍，建议有 GPU）",
+  "btn_cancel": "■  取消",
+  "btn_pick_dir": "选文件夹",
+  "lbl_batch": "批量处理",
+  "batch_hint": "已选 {n} 个文件",
+  "batch_none": "未选择文件",
+  "pr_batch": "批量 {i}/{n}：{name}",
+  "batch_done": "批量完成：成功 {ok} / 失败 {fail}，总耗时 {n} 秒",
+  "status_cancel": "已取消",
+  "btn_add_files": "添加文件",
+  "btn_clear": "清空",
+  "lbl_files": "待处理文件",
+  "tpl_auto": "自动检测",
+  "tpl_none": "未找到模板",
+  "tpl_default": "默认模板"
 }

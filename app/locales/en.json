@@ -45,5 +45,20 @@
   "err_fail": "Processing failed",
   "err_out_missing": "Output folder does not exist yet.",
   "info": "Info",
-  "lbl_lang": "Language"
+  "lbl_lang": "Language",
+  "opt_hq": "High-quality model (4x slower, GPU recommended)",
+  "btn_cancel": "■  Cancel",
+  "btn_pick_dir": "Pick folder",
+  "lbl_batch": "Batch mode",
+  "batch_hint": "{n} file(s) selected",
+  "batch_none": "no file selected",
+  "pr_batch": "Batch {i}/{n}: {name}",
+  "batch_done": "Batch done: {ok} ok / {fail} failed, {n}s total",
+  "status_cancel": "Cancelled",
+  "btn_add_files": "Add files",
+  "btn_clear": "Clear",
+  "lbl_files": "Files to process",
+  "tpl_auto": "Auto-detect",
+  "tpl_none": "No template found",
+  "tpl_default": "Default template"
 }

@@ -45,5 +45,20 @@
   "err_fail": "処理に失敗しました",
   "err_out_missing": "出力フォルダがまだありません。",
   "info": "情報",
-  "lbl_lang": "言語"
+  "lbl_lang": "言語",
+  "opt_hq": "高品質モデル（4倍遅い・GPU推奨）",
+  "btn_cancel": "■  中断",
+  "btn_pick_dir": "フォルダ選択",
+  "lbl_batch": "バッチ処理",
+  "batch_hint": "{n} 個選択",
+  "batch_none": "未選択",
+  "pr_batch": "バッチ {i}/{n}：{name}",
+  "batch_done": "バッチ完了：成功 {ok} / 失敗 {fail}、{n} 秒",
+  "status_cancel": "キャンセル済み",
+  "btn_add_files": "ファイル追加",
+  "btn_clear": "クリア",
+  "lbl_files": "処理対象",
+  "tpl_auto": "自動検出",
+  "tpl_none": "テンプレートなし",
+  "tpl_default": "デフォルトテンプレート"
 }
