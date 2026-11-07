@@ -17,6 +17,15 @@ from typing import Callable
 
 Progress = Callable[[str, float], None]  # (message, fraction 0..1)
 
+
+def _t(key: str, **fmt) -> str:
+    """取当前语言的文案；i18n 不可用时回退到 key。"""
+    try:
+        from app.i18n import get_i18n
+        return get_i18n().t(key, **fmt)
+    except Exception:
+        return key
+
 # 分轨线程数 (实测 4 线程比 2 线程快 26%)
 DEMUCS_THREADS = 4
 
@@ -195,7 +204,7 @@ def _separate(audio: str, out_dir: str, report: Progress, model_name: str = "htd
 
     _dev = pick_device()
     _tag = "GPU" if _dev in ("cuda", "mps") else "CPU"
-    report("分离音轨：加载模型 %s（%s）…" % (model_name, _tag), 0.10)
+    report(_t("pr_sep_loading", model=model_name, dev=_tag), 0.10)
     model = get_model(model_name)
     model.eval()
 
@@ -218,7 +227,7 @@ def _separate(audio: str, out_dir: str, report: Progress, model_name: str = "htd
         except Exception:
             pass  # 交给 demucs 内部处理
 
-    report("分离音轨：推理中（这一步最慢）…", 0.15)
+    report(_t("pr_sep_running"), 0.15)
 
     with torch.no_grad():
         out = apply_model(
@@ -230,7 +239,7 @@ def _separate(audio: str, out_dir: str, report: Progress, model_name: str = "htd
             split=True,
         )[0]  # -> (n_sources, channels, samples)
 
-    report("分离音轨：写出结果…", 0.66)
+    report(_t("pr_sep_writing"), 0.66)
 
     stems: dict[str, np.ndarray] = {}
     for i, name in enumerate(sources_names):
@@ -254,7 +263,7 @@ def run(opts: Options, progress: Progress | None = None,
 
     def check_cancel() -> None:
         if cancel and cancel():
-            raise RuntimeError("已取消")
+            raise RuntimeError(_t("err_cancelled"))
 
     t0 = time.time()
     res = Result(out_dir=opts.out_dir)
@@ -275,18 +284,18 @@ def run(opts: Options, progress: Progress | None = None,
     base = os.path.splitext(os.path.basename(opts.audio))[0]
     work = os.path.join(opts.out_dir, f"{base}_stems")
     os.makedirs(work, exist_ok=True)
-    res.log.append(f"输入：{opts.audio}")
-    res.log.append(f"输出目录：{opts.out_dir}")
+    res.log.append(_t("log_input", path=opts.audio))
+    res.log.append(_t("log_output", path=opts.out_dir))
 
     # --- 1. BPM ------------------------------------------------------
-    report("检测速度…", 0.03)
+    report(_t("pr_bpm"), 0.03)
     try:
         bpm, conf = analysis.estimate_bpm(opts.audio)
         res.bpm = opts.bpm_override or bpm
-        res.log.append(f"速度：{bpm:.2f} BPM（可以在界面上手动改）")
+        res.log.append(_t("log_bpm", bpm="%.2f" % bpm))
     except Exception as exc:
         res.bpm = opts.bpm_override or 120.0
-        res.log.append(f"速度检测失败，回退 120 BPM：{exc}")
+        res.log.append(_t("log_bpm_fail", err=exc))
     if opts.bpm_override:
         res.bpm = opts.bpm_override
     # 模板自愈：找不到就自动恢复
@@ -300,14 +309,14 @@ def run(opts: Options, progress: Progress | None = None,
         raise RuntimeError(
             f"可用内存只有 {free:.1f} GB，分轨至少需要 1 GB。"
             f"请先关掉其他程序（浏览器、聊天软件）再试。")
-    report("分离音轨（PyTorch，这一步最慢）…", 0.08)
+    report(_t("pr_sep_pytorch"), 0.08)
     stems = {}
     sep_error = None
     try:
         stems = _separate(opts.audio, work, report, model_name=opts.model_name)
     except Exception as exc:
         sep_error = exc
-        res.log.append(f"分轨失败：{exc}")
+        res.log.append(_t("err_sep_fail", err=exc))
     check_cancel()
 
     stem_paths: dict[str, str] = {}
@@ -320,31 +329,31 @@ def run(opts: Options, progress: Progress | None = None,
         stem_paths[key] = p
         res.stems[key] = p
     if stem_paths:
-        res.log.append("分轨：" + "、".join(sorted(stem_paths)))
+        res.log.append(_t("log_stems", names=", ".join(sorted(stem_paths))))
     if sep_error is not None and not stem_paths:
-        raise RuntimeError(f"分轨失败，无法继续：{sep_error}")
+        raise RuntimeError(_t("err_sep_fatal", err=sep_error))
 
     # --- 3. transcription -------------------------------------------
     notes = []
     drum_notes: list[dict] = []
     if opts.make_midi:
-        report("转谱（识别音符）…", 0.70)
+        report(_t("pr_transcribe"), 0.70)
         model = find_model(os.path.join("basic_pitch", "nmp.onnx")) or find_model("nmp.onnx")
         if model is None:
-            res.log.append("找不到转谱模型 nmp.onnx，跳过 MIDI")
+            res.log.append(_t("log_no_model"))
         else:
             src = stem_paths.get("other") or stem_paths.get("vocals") or next(iter(stem_paths.values()))
             try:
                 notes = transcribe.transcribe(src, model)
                 res.notes = len(notes)
-                res.log.append(f"旋律：{len(notes)} 个音符（来自 {os.path.basename(src)}）")
+                res.log.append(_t("log_notes", n=len(notes), src=os.path.basename(src)))
             except Exception as exc:
-                res.log.append(f"旋律转谱失败：{exc}")
+                res.log.append(_t("log_trans_fail", err=exc))
     check_cancel()
 
     # --- 3b. drum hits -----------------------------------------------
     if opts.make_drums and "drums" in stem_paths:
-        report("识别鼓点…", 0.80)
+        report(_t("pr_drums"), 0.80)
         try:
             from . import drums as drums_mod
 
@@ -355,9 +364,9 @@ def run(opts: Options, progress: Progress | None = None,
             snare = sum(1 for n in drum_notes if n["pitch"] == 38)
             hat = sum(1 for n in drum_notes if n["pitch"] == 42)
             res.drums = len(drum_notes)
-            res.log.append(f"鼓点：{len(drum_notes)} 个（底鼓 {kick} / 军鼓 {snare} / 镲 {hat}）")
+            res.log.append(_t("log_drums", n=len(drum_notes), kick=kick, snare=snare, hat=hat))
         except Exception as exc:
-            res.log.append(f"鼓点识别失败：{exc}")
+            res.log.append(_t("log_drum_fail", err=exc))
     check_cancel()
 
     # --- 3c. MIDI file ------------------------------------------------
@@ -368,14 +377,14 @@ def run(opts: Options, progress: Progress | None = None,
             res.mid = mid
             res.log.append(f"MIDI：{mid}")
         except Exception as exc:
-            res.log.append(f"写 MIDI 失败：{exc}")
+            res.log.append(_t("log_midi_fail", err=exc))
     check_cancel()
 
     # --- 4. FLP ------------------------------------------------------
     if opts.make_flp:
-        report("写入 FL 工程…", 0.88)
+        report(_t("pr_flp"), 0.88)
         if not opts.template or not os.path.exists(opts.template):
-            res.log.append("找不到 FL 模板工程（template.flp），已跳过 .flp 生成")
+            res.log.append(_t("log_no_template"))
         else:
             from . import flp as flp_mod
 
@@ -403,14 +412,14 @@ def run(opts: Options, progress: Progress | None = None,
                     drum_notes=drum_objs if drum_objs else None,
                 )
                 res.flp = out_flp
-                res.log.append(f"FL 工程：{out_flp}（{info['items']} 个剪辑）")
+                res.log.append(_t("log_flp", path=out_flp, n=info["items"]))
             except Exception as exc:
-                res.log.append(f"生成 .flp 失败：{exc}")
+                res.log.append(_t("log_flp_fail", err=exc))
                 res.log.append(traceback.format_exc(limit=2))
 
-    report("完成", 1.0)
+    report(_t("pr_done"), 1.0)
     res.seconds = time.time() - t0
-    res.log.append(f"总耗时 {res.seconds:.0f} 秒")
+    res.log.append(_t("log_total", n="%.0f" % res.seconds))
     return res
 
 
@@ -429,7 +438,7 @@ def _probe_audio(path: str) -> None:
 
     ext = os.path.splitext(path)[1].lower()
     if not os.path.exists(path):
-        raise RuntimeError(f"找不到文件：{path}")
+        raise RuntimeError(_t("err_file_missing", path=path))
     if ext in (".m4a", ".aac", ".wma", ".mp4", ".opus"):
         raise RuntimeError(
             f"暂不支持 {ext} 格式（解码器不支持）。请先用任意转换工具把它转成 mp3 或 wav 再试。")
@@ -440,9 +449,9 @@ def _probe_audio(path: str) -> None:
             f"读不了这个音频文件，可能已损坏或格式不受支持。\n"
             f"支持：mp3 / wav / flac / ogg。\n原始错误：{exc}") from exc
     if info.frames <= 0:
-        raise RuntimeError("这个文件里没有音频数据。")
+        raise RuntimeError(_t("err_no_audio_data"))
     if info.samplerate < 8000:
-        raise RuntimeError(f"采样率太低（{info.samplerate} Hz），无法处理。")
+        raise RuntimeError(_t("err_sr_low", sr=info.samplerate))
 
 
 def _read_mono(path: str):

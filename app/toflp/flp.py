@@ -62,6 +62,15 @@ class NoteEvent:
     velocity: int = 90
 
 
+def _t(key: str, **fmt) -> str:
+    """取当前语言的文案；i18n 不可用时回退到 key。"""
+    try:
+        from app.i18n import get_i18n
+        return get_i18n().t(key, **fmt)
+    except Exception:
+        return key
+
+
 def _has_sample_path(channel) -> bool:
     return any(int(e.id) == int(ChannelID.SamplePath) for e in channel.events)
 
@@ -92,7 +101,7 @@ def ensure_sample_paths(events: list, positions: list[int]) -> tuple[list, int]:
 
     starts = _channel_starts(events)
     if max(positions, default=-1) >= len(starts):
-        raise RuntimeError("模板通道数量与预期不符")
+        raise RuntimeError(_t("err_tpl_channels"))
     out = list(events)
     inserted = 0
     shift = 0
@@ -163,7 +172,7 @@ def build_project(template: str, out: str, stems: list[Stem], bpm: float,
     # --- channels ---
     channels = [list(project.channels)[i] for i in chosen_positions if i < len(list(project.channels))]
     if len(channels) < len(stems):
-        raise RuntimeError(f"模板通道不足：需要 {len(stems)} 个，只有 {len(channels)} 个")
+        raise RuntimeError(_t("err_tpl_short", need=len(stems), have=len(channels)))
     for ch, stem in zip(channels, stems):
         try:
             ch.name = stem.name

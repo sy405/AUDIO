@@ -4,6 +4,15 @@ from __future__ import annotations
 import numpy as np
 
 
+def _t(key: str) -> str:
+    """取当前语言的文案。"""
+    try:
+        from app.i18n import get_i18n
+        return get_i18n().t(key)
+    except Exception:
+        return "?"
+
+
 def load_mono(path: str, target_sr: int = 22050) -> tuple[np.ndarray, int]:
     import soundfile as sf
 
@@ -188,12 +197,12 @@ def estimate_bpm(x: np.ndarray, sr: int = 22050, hop: int = 256,
 def detect_key(x: np.ndarray, sr: int = 22050) -> str:
     """Rough key detection via chroma fold + Krumhansl profiles (best effort)."""
     if len(x) < 4096:
-        return "未知"
+        return _t("key_unknown")
     n_fft = 4096
     hop = 2048
     n_frames = 1 + (len(x) - n_fft) // hop
     if n_frames <= 0:
-        return "未知"
+        return _t("key_unknown")
     frames = np.lib.stride_tricks.as_strided(
         x, shape=(n_frames, n_fft), strides=(x.strides[0] * hop, x.strides[0]), writeable=False
     )
@@ -202,14 +211,14 @@ def detect_key(x: np.ndarray, sr: int = 22050) -> str:
     mask = (freqs >= 65) & (freqs <= 2000)
     spec, freqs = spec[:, mask], freqs[mask]
     if spec.size == 0:
-        return "未知"
+        return _t("key_unknown")
     midi = np.round(69 + 12 * np.log2(np.maximum(freqs, 1) / 440.0)).astype(int)
     pc = midi % 12
     chroma = np.zeros(12)
     for k in range(12):
         chroma[k] = spec[:, pc == k].sum()
     if chroma.sum() <= 0:
-        return "未知"
+        return _t("key_unknown")
     chroma /= chroma.sum()
 
     major = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])

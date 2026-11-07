@@ -1,56 +1,62 @@
 # Audio2FL
 
-> 把 mp3 自动拆成四轨分轨，检测 BPM，转 MIDI，生成 FL Studio 工程。
+> Turn any mp3 into a ready-to-open FL Studio project — stems, BPM, MIDI and all.
 
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.15.0-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+**v1.1** — 中文 / English / 日本語 / 한국어 · GPU acceleration · batch processing
+
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows-blue)](https://github.com/sy405/AUDIO/releases)
+
+**[English](README.md) | [中文](README.zh.md)**
 
 ---
 
-## 这是什么
+## What it does
 
-把 mp3 自动拆成人声 / 鼓 / 贝斯 / 其他四条分轨，检测 BPM，把旋律转成 MIDI，最后生成可直接在 FL Studio 打开的 `.flp` 工程。
+Feed it one mp3. It will:
 
-> 基于 AI 辅助开发，目前处于初步测试阶段，仅供学习交流。
+1. **Separate** the track into vocals / drums / bass / other
+2. **Detect** the tempo (BPM)
+3. **Transcribe** the melody into MIDI
+4. **Detect** drum hits (kick / snare / hi-hat)
+5. **Generate** a `.flp` you can open directly in FL Studio
+
+> Built with AI assistance. Currently in beta — for learning and personal use.
 >
-> 全部处理在本机完成，不上传任何音频。
+> Everything runs locally. No audio is ever uploaded.
 
 ---
 
-## 后续计划
+## Features
 
-| 方向 | 说明 |
-|---|---|
-| **Windows 11 适配** | 当前在 Windows 10 测试通过，后续验证 Win11 的兼容性与视觉表现 |
-| **批量处理** | 支持选择整个文件夹，队列式处理多个文件 |
-| **API 接入** | 可选接入云端分离模型，提升复杂混音的分离准确性 |
-| **质量优化** | 增加高精度模型选项（`htdemucs_ft` 等），牺牲速度换质量 |
-| **更多格式** | 支持 m4a / aac / opus 等输入格式 |
-
----
-
-## 特性
-
-- **完全离线** —— 处理全程本机进行，不上传任何音频
-- **开箱即用** —— 提供打包好的 .exe，无需安装 Python / PyTorch / FFmpeg
-- **速度优化** —— PyTorch FP32 + 4 线程，比 ONNX FP16 快 **37%**
-- **液态玻璃界面** —— CustomTkinter + Windows Acrylic 毛玻璃效果
-- **轻量 MIDI 模型** —— Basic Pitch ONNX 仅 **225 KB**，不依赖 TensorFlow
+- **Four-language UI** — 中文 / English / 日本語 / 한국어, switch live from the top right
+- **Automatic GPU** — uses CUDA when available, falls back to CPU otherwise
+- **Batch mode** — point it at a folder, it processes every audio file inside
+- **High-quality model** — optionally use `htdemucs_ft` (4-model ensemble, ~4x slower, GPU recommended)
+- **Cancellable** — stop a run at any point
+- **Self-healing templates** — if the FLP template goes missing, it restores itself
+- **Fully offline** — no network calls during processing
+- **Zero setup** — ships as a standalone exe, no Python/PyTorch/FFmpeg required
 
 ---
 
-## 安装
+## Download
 
-### 方式一：直接使用打包版（推荐）
+Grab the latest build from [Releases](https://github.com/sy405/AUDIO/releases):
 
-从 [Releases](https://github.com/sy405/AUDIO/releases) 下载 `Audio2FL-v1.0-win64.zip`，解压后双击 `Audio2FL.exe`。
+| File | Size | Notes |
+|---|---|---|
+| **`Audio2FL-v1.1.exe`** | 203 MB | Single-file build. Double-click to run (first launch takes 30-60s, splash screen shown) |
+| `Audio2FL-v1.0-win64.zip` | 241 MB | v1.0 folder build, starts fast |
+| `Audio2FL-v1.0-cpu-offline.zip` | 321 MB | v1.0 offline build (models bundled) |
 
-**不需要安装任何依赖。**
+---
 
-### 方式二：从源码运行
+## Run from source
 
-需要 **Python 3.11**（3.10 / 3.12 也可以）：
+Requires **Python 3.11+** (3.12 / 3.13 also work):
 
 ```bash
 git clone https://github.com/sy405/AUDIO.git
@@ -64,157 +70,159 @@ pip install -r requirements.txt
 python a2fl_entry.py
 ```
 
-> **注意**：安装 PyTorch 时务必使用 CPU 索引源（已在 `requirements.txt` 中配置），否则会下载 2 GB+ 的 CUDA 版本。
+> **Note**: `requirements.txt` points PyTorch at the CPU index. NVIDIA users can swap in the CUDA build for acceleration.
 
 ---
 
-## 使用
+## Usage
 
-### 图形界面
+### GUI
 
 ```bash
 python a2fl_entry.py
 ```
 
-或者把 mp3 直接拖到 `Audio2FL.exe` 图标上。
+Or drop an mp3 onto `Audio2FL.exe`.
 
-界面元素：
-
-| 字段 | 说明 |
+| Field | Description |
 |---|---|
-| **音频文件** | 支持 mp3 / wav / flac / ogg |
-| **输出目录** | 默认 `音乐\Audio2FL` |
-| **FL 模板** | 可选，留空自动用同目录 `template.flp` |
-| **BPM** | 留空自动检测，不准可以手动填 |
+| **Audio file** | mp3 / wav / flac / ogg |
+| **Pick folder** | Batch mode — processes every audio file in that directory |
+| **Output folder** | Defaults to `Music\Audio2FL` |
+| **FL template** | Pick from the dropdown, or browse manually |
+| **Make .flp / .mid / detect drums** | Toggle as needed |
+| **High-quality model** | Uses `htdemucs_ft` (4x slower, best with a GPU) |
+| **BPM** | Leave blank to auto-detect, or type a value |
+| **Cancel** | Stop mid-run |
+
+### Language switching
+
+Top-right dropdown. Changes apply immediately — no restart needed.
+
+### CLI
+
+```bash
+python -c "from app.toflp.pipeline import Options, run; \
+run(Options(audio='song.mp3', out_dir='out', template='template.flp'))"
+```
+
+### Environment variables
+
+| Variable | Purpose |
+|---|---|
+| `A2FL_DEVICE` | Force a device: `cpu` / `cuda` / `mps` |
+| `HF_ENDPOINT` | HuggingFace mirror (e.g. `https://hf-mirror.com` in China) |
 
 ---
 
-## 输出
-
-处理完成后，输出目录里有：
+## Output
 
 ```
-song.flp              FL 工程（四条分轨铺在 Playlist，BPM 已写入）
-song.mid              MIDI（旋律轨 + 鼓轨）
-song_stems/           四条 wav
+song.flp              FL Studio project (4 stems on the playlist, BPM set)
+song.mid              MIDI (melody + drums)
+song_stems/           four wav files
 ├── drums.wav
 ├── bass.wav
 ├── other.wav
 └── vocals.wav
 ```
 
-**四条 wav 是最有价值的产出**，即使不用 FL Studio 也可以单独使用。
+**The four wav files are the real deliverable** — useful even without FL Studio.
 
 ---
 
-## 项目结构
+## Tech stack
 
-```
-Audio2FL/
-├── app/
-│   ├── a2fl_gui.py          GUI（CustomTkinter + Acrylic）
-│   ├── audio_probe.py       音频探测工具
-│   └── toflp/
-│       ├── pipeline.py      主流程（PyTorch 分轨）
-│       ├── flp.py           FLP 工程生成
-│       ├── transcribe.py    MIDI 转谱（Basic Pitch ONNX）
-│       ├── analysis.py      BPM 检测
-│       ├── drums.py         鼓点识别
-│       └── models/
-│           └── nmp.onnx     MIDI 模型（225 KB）
-├── tools/                   开发用评估工具
-│   ├── eval_sdr.py          SDR/SIR/SAR 评估
-│   ├── calibrate_ref.py     参考分轨校准
-│   └── benchmark_demucs.py  性能基准测试
-├── a2fl_entry.py            入口
-├── template.flp             FL 工程模板
-├── requirements.txt
-├── CHANGELOG.md
-├── LICENSE
-└── README.md
-```
-
----
-
-## 技术选型
-
-| 环节 | 方案 | 理由 |
+| Stage | Choice | Why |
 |---|---|---|
-| **分轨** | PyTorch Demucs (FP32, 4 线程) | 比 ONNX FP16 更快 |
-| **MIDI** | Basic Pitch ONNX | 不依赖 TensorFlow，模型仅 225 KB |
-| **BPM** | 自研节拍检测 | 轻量，实测误差 < 1 BPM |
-| **FLP** | [pyflp](https://github.com/demberto/pyflp) | 纯 Python 读写 FL Studio 工程 |
-| **GUI** | CustomTkinter + Windows Acrylic | 液态玻璃风格 |
+| **Separation** | PyTorch Demucs | Best open-source quality/speed balance |
+| **MIDI** | Basic Pitch ONNX | No TensorFlow dependency, 225 KB model |
+| **BPM** | Custom beat detection | Lightweight, < 1 BPM error in practice |
+| **FLP** | [pyflp](https://github.com/demberto/pyflp) | Pure-Python FL Studio project I/O |
+| **GUI** | CustomTkinter + Windows Acrylic | Glassmorphism look |
 
-### 为什么不用 ONNX 分轨
+### Why not ONNX for separation
 
-| 后端 | 精度 | 线程 | 相对速度 |
-|---|---|:---:|---|
-| PyTorch | FP32 | 2 | 基准 |
-| **PyTorch** | **FP32** | **4** | **最快** |
-| ONNX Runtime | FP16 | 2 | 更慢 |
-
-两个因素叠加：线程数 2→4 快 26%；ONNX FP16 在 x86 CPU 上反而更慢（要转 FP32 再算）。
-
-净效果：**PyTorch + 4 线程是当前最快的组合**。
-
-代价是体积——ONNX 分轨模型 158 MB，PyTorch 运行时 518 MB。
+PyTorch is **faster** than ONNX FP16 on x86 CPU (ONNX has to upcast to FP32 internally). The trade-off is a larger bundle (~518 MB runtime), but the speed win is real.
 
 ---
 
-## 已知限制
+## Known limitations
 
-- **不支持 m4a / aac / wma / opus** —— 解码器限制，请先转成 mp3 或 wav
-- **内存需求** —— 分轨至少需要 1 GB 可用内存
-- **FLP 依赖模板** —— 必须提供 `template.flp`，缺失时跳过工程生成
-- **鼓点精度** —— 底鼓 / 军鼓 / 镲的分类有一定误差
-- **人声残留** —— 复杂混音下 vocals 轨可能含有乐器残留
-- **单文件处理** —— 目前一次只能处理一个音频
+- **No m4a / aac / wma / opus input** — convert to mp3 or wav first
+- **1 GB RAM minimum** for separation
+- **FLP needs a template** — auto-recovers, but fails on read-only program directories
+- **Drum classification is approximate** — kick/snare/hat detection has some error
+- **Vocal bleed** — busy mixes may leave instruments in the vocals stem
+- **Slow first launch** — the single-file build unpacks ~500 MB to a temp folder (30-60s, splash screen shown)
+- **High-quality model downloads** — `htdemucs_ft` needs ~320 MB on first use
 
 ---
 
-## 常见问题
+## Roadmap
+
+| Item | Status |
+|---|---|
+| Batch processing | ✅ v1.1 |
+| High-quality model | ✅ v1.1 |
+| Multi-language UI | ✅ v1.1 (zh / en / ja / ko) |
+| GPU acceleration | ✅ v1.1 (auto CUDA detection) |
+| Windows 11 validation | ⏳ pending |
+| More input formats (m4a / aac / opus) | ⏳ planned |
+| API integration | ⏳ optional, for harder mixes |
+
+---
+
+## FAQ
 
 <details>
-<summary><b>提示「找不到 FL 模板工程」</b></summary>
+<summary><b>The splash progress bar is stuck</b></summary>
 
-确认 `template.flp` 与 exe 在同一目录，或在界面「FL 模板」栏手动选择。
-
-忽略也可以——只是跳过 .flp 生成，分轨和 MIDI 照常输出。
+The single-file build unpacks ~500 MB before the UI appears — **30-60 seconds on first launch**. The progress bar is decorative; it doesn't reflect actual progress. Second launches are faster thanks to OS caching.
 </details>
 
 <details>
-<summary><b>提示「可用内存不足」</b></summary>
+<summary><b>"FL template not found"</b></summary>
 
-分轨至少需要 1 GB 可用内存。关掉浏览器、聊天软件等再试。
+Normally it restores itself from the bundled copy. If it still fails, the program directory is probably read-only — move the app somewhere writable (e.g. Desktop).
 </details>
 
 <details>
-<summary><b>处理速度能更快吗</b></summary>
+<summary><b>"Not enough memory"</b></summary>
 
-当前已用 4 线程（实测比 2 线程快 26%）。换更强的 CPU 耗时大致成正比下降。
+Separation needs at least 1 GB free. Close browsers and chat apps, then retry.
 </details>
 
 <details>
-<summary><b>能用 GPU 加速吗</b></summary>
+<summary><b>Can I use my GPU?</b></summary>
 
-可以。修改 `app/toflp/pipeline.py` 里的 `_separate()`：
+Yes — the app auto-detects CUDA. The shipped exe bundles **CPU-only PyTorch**, so to actually use a GPU you need to run from source with the CUDA build:
 
-```python
-out = apply_model(model, wav.unsqueeze(0), device="cuda", ...)
+```bash
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
-需要先安装 CUDA 版 PyTorch。
+You can also force a device:
+
+```bash
+set A2FL_DEVICE=cuda    # or cpu
+```
+</details>
+
+<details>
+<summary><b>How does batch mode work?</b></summary>
+
+Click **Pick folder**, select a directory, and the app will scan it for mp3 / wav / flac / ogg, then process each in order into the same output folder. **Cancel** stops the queue.
 </details>
 
 ---
 
-## 致谢
+## Credits
 
-- [Demucs](https://github.com/facebookresearch/demucs) — Meta 的音源分离模型
-- [Basic Pitch](https://github.com/spotify/basic-pitch) — Spotify 的音频转 MIDI 模型
-- [pyflp](https://github.com/demberto/pyflp) — FL Studio 工程文件读写
-- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) — 现代化 Tkinter 封装
+- [Demucs](https://github.com/facebookresearch/demucs) — Meta's source separation model
+- [Basic Pitch](https://github.com/spotify/basic-pitch) — Spotify's audio-to-MIDI model
+- [pyflp](https://github.com/demberto/pyflp) — FL Studio project I/O
+- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) — modern Tkinter wrapper
 
 ---
 
@@ -224,8 +232,8 @@ out = apply_model(model, wav.unsqueeze(0), device="cuda", ...)
 
 ---
 
-## 免责声明
+## Disclaimer
 
-本工具仅供个人学习与创作使用。分离质量受原始音频影响很大，**不要期望完美还原**。
+For personal learning and creative work. Separation quality depends heavily on the source material — **don't expect a perfect reconstruction**.
 
-请尊重原作者的版权，不要将分离结果用于商业用途或二次发行。
+Respect the original artists' copyright. Don't use separated stems commercially or redistribute them.
