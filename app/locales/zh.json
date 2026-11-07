@@ -20,7 +20,7 @@
   "opt_drums": "识别鼓点",
   "lbl_bpm": "BPM",
   "ph_bpm": "自动",
-  "hint_bpm": "留空自动",
+  "hint_bpm": "留空=自动",
   "btn_start": "▶   开始处理",
   "btn_running": "处理中…",
   "btn_open_out": "打开输出目录",

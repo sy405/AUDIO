@@ -20,7 +20,7 @@
   "opt_drums": "드럼 감지",
   "lbl_bpm": "BPM",
   "ph_bpm": "자동",
-  "hint_bpm": "비우면 자동",
+  "hint_bpm": "자동",
   "btn_start": "▶   시작",
   "btn_running": "처리 중…",
   "btn_open_out": "출력 폴더 열기",

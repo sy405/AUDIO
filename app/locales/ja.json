@@ -20,7 +20,7 @@
   "opt_drums": "ドラムを検出",
   "lbl_bpm": "BPM",
   "ph_bpm": "自動",
-  "hint_bpm": "空欄で自動",
+  "hint_bpm": "自動",
   "btn_start": "▶   開始",
   "btn_running": "処理中…",
   "btn_open_out": "出力フォルダを開く",

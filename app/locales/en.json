@@ -20,7 +20,7 @@
   "opt_drums": "Detect drums",
   "lbl_bpm": "BPM",
   "ph_bpm": "auto",
-  "hint_bpm": "blank = auto",
+  "hint_bpm": "auto",
   "btn_start": "▶   Start",
   "btn_running": "Processing…",
   "btn_open_out": "Open output folder",

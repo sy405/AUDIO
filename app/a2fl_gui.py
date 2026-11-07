@@ -220,11 +220,11 @@ class App(ctk.CTk):
 
         self.lbl_bpm = ctk.CTkLabel(opt, text="BPM", font=FONT_SM, text_color=COL["muted"])
         self.lbl_bpm.pack(side="left", padx=(14, 5))
-        ctk.CTkEntry(opt, textvariable=self.v_bpm, width=70, height=30, corner_radius=8,
+        ctk.CTkEntry(opt, textvariable=self.v_bpm, width=64, height=30, corner_radius=8,
                      fg_color=COL["card_hi"], border_color=COL["border"],
                      text_color=COL["text"], font=FONT_SM).pack(side="left")
-        self.lbl_bpm_hint = ctk.CTkLabel(opt, text="", font=FONT_SM, text_color=COL["dim"])
-        self.lbl_bpm_hint.pack(side="left", padx=(6, 0))
+        self.lbl_bpm_hint = ctk.CTkLabel(opt, text="", font=FONT_SM, text_color=COL["dim"], width=1)
+        self.lbl_bpm_hint.pack(side="left", padx=(5, 0))
 
         bar = ctk.CTkFrame(self, fg_color="transparent")
         bar.grid(row=3, column=0, sticky="ew", pady=(0, 8), **pad)
@@ -307,6 +307,17 @@ class App(ctk.CTk):
             self.lbl.configure(text=t("status_ready"), text_color=COL["muted"])
 
         self.opt_lang.set(self.i18n.name())
+
+        # 语言变了，模板下拉框里的显示名也要跟着变
+        if hasattr(self, "tpl_menu"):
+            cur = self.v_tpl.get()
+            self._load_templates()
+            # 尽量保留用户原本选的模板
+            if cur:
+                for disp, path in self._tpl_map.items():
+                    if path == cur:
+                        self.tpl_menu.set(disp)
+                        break
 
     def _on_lang_change(self, name: str):
         for code, nm in self.i18n.all_lang_names():
