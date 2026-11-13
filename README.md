@@ -159,6 +159,19 @@ PyTorch is **faster** than ONNX FP16 on x86 CPU (ONNX has to upcast to FP32 inte
 
 ---
 
+## Benchmark
+
+See [BENCHMARK.md](BENCHMARK.md) for measured GPU performance:
+
+| Model | Time (RTX 4090) | VRAM | Notes |
+|---|---|---|---|
+| `htdemucs` | 18.4 s | 549 MB | default |
+| `htdemucs_ft` | 41.9 s | 552 MB | 4-model ensemble, better drums |
+
+*30-second audio sample. Only ~550 MB VRAM needed — even an 8 GB card is enough.*
+
+---
+
 ## Roadmap
 
 | Item | Status |
