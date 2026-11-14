@@ -42,7 +42,7 @@
 
 | 文件 | 大小 | 说明 |
 |---|---|---|
-| **`Audio2FL-v1.1.exe`** | 203 MB | 单文件版，双击运行（首次启动约 30-60 秒，有启动画面）|
+| **`Audio2FL-v1.1-cpu.exe`** | 203 MB | 单文件版，双击运行（首次启动约 30-60 秒，有启动画面）|
 | `Audio2FL-v1.0-win64.zip` | 241 MB | v1.0 文件夹版，启动快 |
 | `Audio2FL-v1.0-cpu-offline.zip` | 321 MB | v1.0 离线版（内置模型）|
 
@@ -194,10 +194,20 @@ PyTorch 后端比 ONNX FP16 **更快**（在 x86 CPU 上 ONNX 需要转 FP32 再
 <details>
 <summary><b>能用 GPU 加速吗</b></summary>
 
-**可以。** 程序会自动检测 CUDA。当前发布的 exe 打包的是 **CPU 版 PyTorch**，想用 GPU 需要从源码运行并装 CUDA 版：
+**可以，下载 CUDA 版就行。**
+
+| 你下载的是 | GPU 支持 |
+|---|---|
+| `Audio2FL-v1.1-cpu.exe`（203 MB）| 只能用 CPU |
+| `Audio2FL-CUDA-cu124.zip.001~005`（2.35 GB）| **自动检测 NVIDIA 显卡** |
+
+CUDA 版内置了 CUDA 12.4 + cuDNN 9，不需要额外安装任何东西。
+没有 NVIDIA 显卡的电脑也能跑（会自动回落 CPU）。
+
+**如果你想从源码运行**并用 GPU，装 CUDA 版 PyTorch：
 
 ```bash
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 ```
 
 也可以强制指定设备：

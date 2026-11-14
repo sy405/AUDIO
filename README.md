@@ -50,7 +50,7 @@ Grab the latest build from [Releases](https://github.com/sy405/AUDIO/releases):
 
 | File | Size |
 |---|---|
-| **`Audio2FL-v1.1.exe`** | 203 MB |
+| **`Audio2FL-v1.1-cpu.exe`** | 203 MB |
 
 Double-click to run. First launch takes 30-60 seconds (unpacks to temp, splash screen shown).
 
@@ -69,8 +69,6 @@ That gives you `Audio2FL-CUDA.exe` (2.35 GB).
 - Bundles CUDA 12.4 + cuDNN 9 - no extra install needed
 - Separation speed: **18 s** on RTX 4090 vs **52 s** on CPU (30-second sample)
 
----|---|---|
-| **`Audio2FL-v1.1.exe`** | 203 MB | Single-file build. Double-click to run (first launch takes 30-60s, splash screen shown) |
 | `Audio2FL-v1.0-win64.zip` | 241 MB | v1.0 folder build, starts fast |
 | `Audio2FL-v1.0-cpu-offline.zip` | 321 MB | v1.0 offline build (models bundled) |
 
@@ -231,10 +229,20 @@ Separation needs at least 1 GB free. Close browsers and chat apps, then retry.
 <details>
 <summary><b>Can I use my GPU?</b></summary>
 
-Yes — the app auto-detects CUDA. The shipped exe bundles **CPU-only PyTorch**, so to actually use a GPU you need to run from source with the CUDA build:
+**Yes — just download the CUDA build.**
+
+| You downloaded | GPU support |
+|---|---|
+| `Audio2FL-v1.1-cpu.exe` (203 MB) | CPU only |
+| `Audio2FL-CUDA-cu124.zip.001~005` (2.35 GB) | **Auto-detects NVIDIA GPU** |
+
+The CUDA build bundles CUDA 12.4 + cuDNN 9, so there is nothing extra to install.
+It also runs fine on machines without an NVIDIA GPU (falls back to CPU automatically).
+
+**If you prefer running from source** with a GPU, install the CUDA wheels:
 
 ```bash
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 ```
 
 You can also force a device:
