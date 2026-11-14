@@ -13,10 +13,24 @@ def _t(key: str) -> str:
         return "?"
 
 
-def load_mono(path: str, target_sr: int = 22050) -> tuple[np.ndarray, int]:
+def load_mono(path: str, target_sr: int = 22050,
+              max_seconds: float | None = 60.0) -> tuple[np.ndarray, int]:
+    """读取单声道音频并重采样。
+
+    max_seconds 限制只读开头一段——BPM / 调性这类全局特征用前 60 秒足够，
+    整首歌重采样既慢又吃内存。传 None 则读全长。
+    """
     import soundfile as sf
 
-    data, sr = sf.read(path, dtype="float32", always_2d=True)
+    frames = -1
+    if max_seconds is not None:
+        try:
+            info = sf.info(path)
+            frames = min(int(max_seconds * info.samplerate), int(info.frames))
+        except Exception:
+            frames = -1
+
+    data, sr = sf.read(path, dtype="float32", always_2d=True, frames=frames)
     mono = data.mean(axis=1)
     if sr != target_sr:
         mono = _resample(mono, sr, target_sr)
@@ -25,23 +39,30 @@ def load_mono(path: str, target_sr: int = 22050) -> tuple[np.ndarray, int]:
 
 
 def _resample(x: np.ndarray, sr_in: int, sr_out: int) -> np.ndarray:
-    if sr_in == sr_out:
+    """重采样到目标采样率。
+
+    优先用 scipy.signal.resample_poly（多相滤波，内存友好）；
+    scipy 不可用时退回归一化线性插值（不精确，但不会爆内存）。
+    """
+    if sr_in == sr_out or len(x) == 0:
         return x
+
+    try:
+        from math import gcd
+        from scipy.signal import resample_poly
+        g = gcd(int(sr_in), int(sr_out))
+        up = int(sr_out) // g
+        down = int(sr_in) // g
+        return resample_poly(x, up, down).astype(np.float32)
+    except Exception:
+        pass
+
+    # 退路：线性插值（内存 O(n)，不会炸）
     n_out = int(round(len(x) * sr_out / sr_in))
-    # windowed-sinc (Kaiser) resampling, cheap and adequate for beat detection
-    ratio = sr_out / sr_in
-    n_win = 16
-    t_out = np.arange(n_out)
-    pos = t_out / ratio
-    i0 = np.floor(pos).astype(np.int64)
-    frac = pos - i0
-    taps = np.arange(-n_win, n_win + 1)
-    idx = i0[:, None] + taps[None, :]
-    np.clip(idx, 0, len(x) - 1, out=idx)
-    d = frac[:, None] - taps[None, :]
-    w = np.sinc(d) * np.kaiser(2 * n_win + 1, 8.0)[None, :] if False else np.sinc(d)
-    y = (x[idx] * w).sum(axis=1) / np.maximum(w.sum(axis=1), 1e-9)
-    return y.astype(np.float32)
+    if n_out <= 0:
+        return np.zeros(0, dtype=np.float32)
+    src_idx = np.linspace(0.0, len(x) - 1.0, n_out, dtype=np.float64)
+    return np.interp(src_idx, np.arange(len(x), dtype=np.float64), x).astype(np.float32)
 
 
 def onset_envelope(x: np.ndarray, sr: int = 22050, hop: int = 256, n_fft: int = 1024) -> np.ndarray:

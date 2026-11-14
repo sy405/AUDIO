@@ -58,6 +58,20 @@ def dark_titlebar(hwnd: int) -> None:
         pass
 
 
+def unset_topmost(hwnd: int) -> None:
+    """显式取消窗口置顶，让它能被其他窗口盖住。"""
+    try:
+        HWND_NOTOPMOST = -2
+        SWP_NOSIZE = 0x0001
+        SWP_NOMOVE = 0x0002
+        SWP_NOACTIVATE = 0x0010
+        ctypes.windll.user32.SetWindowPos(
+            hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
+            SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
+    except Exception:
+        pass
+
+
 def abgr(hexcolor: str, alpha: int = 0xE0) -> int:
     h = hexcolor.lstrip("#")
     r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
@@ -92,6 +106,13 @@ class App(ctk.CTk):
         hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
         dark_titlebar(hwnd)
         enable_acrylic(hwnd, tint=abgr("#0B0F1A", 0xF0))
+
+        # 确保不置顶：Tk 层面 + Win32 层面各关一次
+        try:
+            self.attributes("-topmost", False)
+        except Exception:
+            pass
+        unset_topmost(hwnd)
 
         self._build()
         self._load_templates()
@@ -568,7 +589,13 @@ def main(argv=None):
             lang = low.split("=", 1)[1]
         elif low.endswith((".mp3", ".wav", ".flac", ".ogg")) and os.path.exists(a):
             audio = a
-    App(audio, lang).mainloop()
+    app = App(audio, lang)
+    # 窗口映射后再取消一次置顶，防止 Win32 初始化时被提上来
+    try:
+        app.after(200, lambda: app.attributes("-topmost", False))
+    except Exception:
+        pass
+    app.mainloop()
     return 0
 
 

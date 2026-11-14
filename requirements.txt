@@ -10,7 +10,7 @@
 # 注意: 必须用 CPU 索引源，否则会下载 2GB+ 的 CUDA 版本
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.15.0
-torchaudio==2.11.1
+torchaudio==2.15.0
 demucs==4.1.0
 
 # --- 音频读写 ---

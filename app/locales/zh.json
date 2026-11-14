@@ -46,7 +46,7 @@
   "err_out_missing": "输出目录还不存在。",
   "info": "提示",
   "lbl_lang": "语言",
-  "opt_hq": "高质量模型（慢 4 倍，建议有 GPU）",
+  "opt_hq": "高质量模型（约 2.3 倍耗时，建议有 GPU）",
   "btn_cancel": "■  取消",
   "btn_pick_dir": "选文件夹",
   "lbl_batch": "批量处理",
@@ -92,5 +92,7 @@
   "log_no_template": "找不到 FL 模板工程（template.flp），已跳过 .flp 生成",
   "err_file_missing": "找不到文件：{path}",
   "err_no_audio_data": "这个文件里没有音频数据。",
-  "err_sr_low": "采样率太低（{sr} Hz），无法处理。"
+  "err_sr_low": "采样率太低（{sr} Hz），无法处理。",
+  "log_key": "调性：{key}",
+  "log_key_fail": "调性检测失败：{err}"
 }

@@ -14,28 +14,52 @@ import sys
 from dataclasses import dataclass
 
 def _bootstrap_pyflp(libs_dir: str | None = None) -> None:
+    """兼容不同 pyflp 版本的事件枚举。
+
+    pyflp 2.2.x 某些构建里 EventEnum 没有成员（枚举为空），
+    解析时会抛 TypeError。这里补一个 _DUMMY 成员并接管 _missing_，
+    让未知事件降级成匿名对象而不是崩溃。
+
+    如果 pyflp 未来的版本换掉了这套机制，函数会静默跳过——
+    真正的失败点会出现在 parse() 处，错误信息比 monkeypatch 崩掉更清楚。
+    """
     if libs_dir and libs_dir not in sys.path:
         sys.path.insert(0, libs_dir)
-    from pyflp._events import EventEnum
 
-    if EventEnum.__members__:
+    try:
+        from pyflp._events import EventEnum
+    except Exception:
+        return  # pyflp 结构变了，交给上层报错
+
+    try:
+        if EventEnum.__members__:
+            return  # 已是正常枚举，无需干预
+
+        if not hasattr(EventEnum, "_member_names_"):
+            return  # 不是标准 Enum，别乱动
+
+        dummy = int.__new__(EventEnum, -999)
+        dummy._value_ = -999
+        dummy.type = None
+        EventEnum._member_names_.append("_DUMMY")
+        EventEnum._member_map_["_DUMMY"] = dummy
+        EventEnum._value2member_map_[-999] = dummy
+
+        def _missing_(cls, value):
+            if not isinstance(value, int):
+                return None
+            try:
+                obj = int.__new__(cls, value)
+                obj._value_ = value
+                obj.type = None
+                return obj
+            except Exception:
+                return None
+
+        EventEnum._missing_ = classmethod(_missing_)
+    except Exception:
+        # 任何一步失败都不该让整个模块导入挂掉
         return
-    dummy = int.__new__(EventEnum, -999)
-    dummy._value_ = -999
-    dummy.type = None
-    EventEnum._member_names_.append("_DUMMY")
-    EventEnum._member_map_["_DUMMY"] = dummy
-    EventEnum._value2member_map_[-999] = dummy
-
-    def _missing_(cls, value):
-        if not isinstance(value, int):
-            return None
-        obj = int.__new__(cls, value)
-        obj._value_ = value
-        obj.type = None
-        return obj
-
-    EventEnum._missing_ = classmethod(_missing_)
 
 
 _bootstrap_pyflp()

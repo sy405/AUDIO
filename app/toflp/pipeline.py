@@ -252,7 +252,7 @@ def _separate(audio: str, out_dir: str, report: Progress, model_name: str = "htd
                 pass
         stems[name] = src.numpy().T  # (samples, channels)
 
-    return stems
+    return stems, int(sr)
 
 
 def run(opts: Options, progress: Progress | None = None,
@@ -296,6 +296,15 @@ def run(opts: Options, progress: Progress | None = None,
     except Exception as exc:
         res.bpm = opts.bpm_override or 120.0
         res.log.append(_t("log_bpm_fail", err=exc))
+
+    # 调性检测（chroma + Krumhansl profile）
+    try:
+        from . import analysis as _analysis
+        _mono, _sr = _analysis._read_mono(opts.audio)
+        res.key = _analysis.detect_key(_mono, _sr)
+        res.log.append(_t("log_key", key=res.key))
+    except Exception as _exc:
+        res.log.append(_t("log_key_fail", err=_exc))
     if opts.bpm_override:
         res.bpm = opts.bpm_override
     # 模板自愈：找不到就自动恢复
@@ -311,9 +320,10 @@ def run(opts: Options, progress: Progress | None = None,
             f"请先关掉其他程序（浏览器、聊天软件）再试。")
     report(_t("pr_sep_pytorch"), 0.08)
     stems = {}
+    sr_actual = 44100
     sep_error = None
     try:
-        stems = _separate(opts.audio, work, report, model_name=opts.model_name)
+        stems, sr_actual = _separate(opts.audio, work, report, model_name=opts.model_name)
     except Exception as exc:
         sep_error = exc
         res.log.append(_t("err_sep_fail", err=exc))
@@ -325,7 +335,7 @@ def run(opts: Options, progress: Progress | None = None,
         p = os.path.join(work, f"{key}.wav")
         if not os.path.exists(p):
             import soundfile as sf
-            sf.write(p, arr, 44100)
+            sf.write(p, arr, sr_actual)
         stem_paths[key] = p
         res.stems[key] = p
     if stem_paths:

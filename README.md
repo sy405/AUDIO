@@ -34,7 +34,7 @@ Feed it one mp3. It will:
 - **Four-language UI** — 中文 / English / 日本語 / 한국어, switch live from the top right
 - **Automatic GPU** — uses CUDA when available, falls back to CPU otherwise
 - **Batch mode** — point it at a folder, it processes every audio file inside
-- **High-quality model** — optionally use `htdemucs_ft` (4-model ensemble, ~4x slower, GPU recommended)
+- **High-quality model** — optionally use `htdemucs_ft` (4-model ensemble, ~2.3x slower, GPU recommended)
 - **Cancellable** — stop a run at any point
 - **Self-healing templates** — if the FLP template goes missing, it restores itself
 - **Fully offline** — no network calls during processing
@@ -113,7 +113,7 @@ Or drop an mp3 onto `Audio2FL.exe`.
 | **Output folder** | Defaults to `Music\Audio2FL` |
 | **FL template** | Pick from the dropdown, or browse manually |
 | **Make .flp / .mid / detect drums** | Toggle as needed |
-| **High-quality model** | Uses `htdemucs_ft` (4x slower, best with a GPU) |
+| **High-quality model** | Uses `htdemucs_ft` (2.3x slower, best with a GPU) |
 | **BPM** | Leave blank to auto-detect, or type a value |
 | **Cancel** | Stop mid-run |
 

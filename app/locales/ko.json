@@ -46,7 +46,7 @@
   "err_out_missing": "출력 폴더가 아직 없습니다.",
   "info": "알림",
   "lbl_lang": "언어",
-  "opt_hq": "고품질 모델 (4배 느림, GPU 권장)",
+  "opt_hq": "고품질 모델 (약 2.3배 느림, GPU 권장)",
   "btn_cancel": "■  취소",
   "btn_pick_dir": "폴더 선택",
   "lbl_batch": "일괄 처리",
@@ -92,5 +92,7 @@
   "log_no_template": "FL 템플릿(template.flp) 없음, .flp 생성 건너뜀",
   "err_file_missing": "파일을 찾을 수 없음: {path}",
   "err_no_audio_data": "이 파일에 오디오 데이터가 없습니다.",
-  "err_sr_low": "샘플레이트가 너무 낮음 ({sr} Hz)."
+  "err_sr_low": "샘플레이트가 너무 낮음 ({sr} Hz).",
+  "log_key": "키: {key}",
+  "log_key_fail": "키 감지 실패: {err}"
 }

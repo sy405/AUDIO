@@ -46,7 +46,7 @@
   "err_out_missing": "Output folder does not exist yet.",
   "info": "Info",
   "lbl_lang": "Language",
-  "opt_hq": "High-quality model (4x slower, GPU recommended)",
+  "opt_hq": "High-quality model (about 2.3x slower, GPU recommended)",
   "btn_cancel": "■  Cancel",
   "btn_pick_dir": "Pick folder",
   "lbl_batch": "Batch mode",
@@ -92,5 +92,7 @@
   "log_no_template": "FL template (template.flp) not found, skipping .flp generation",
   "err_file_missing": "File not found: {path}",
   "err_no_audio_data": "This file contains no audio data.",
-  "err_sr_low": "Sample rate too low ({sr} Hz)."
+  "err_sr_low": "Sample rate too low ({sr} Hz).",
+  "log_key": "Key: {key}",
+  "log_key_fail": "Key detection failed: {err}"
 }

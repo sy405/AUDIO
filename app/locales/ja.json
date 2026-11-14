@@ -46,7 +46,7 @@
   "err_out_missing": "出力フォルダがまだありません。",
   "info": "情報",
   "lbl_lang": "言語",
-  "opt_hq": "高品質モデル（4倍遅い・GPU推奨）",
+  "opt_hq": "高品質モデル（約 2.3 倍遅い・GPU 推奨）",
   "btn_cancel": "■  中断",
   "btn_pick_dir": "フォルダ選択",
   "lbl_batch": "バッチ処理",
@@ -92,5 +92,7 @@
   "log_no_template": "FL テンプレート（template.flp）が見つからず、.flp 生成をスキップ",
   "err_file_missing": "ファイルが見つかりません：{path}",
   "err_no_audio_data": "このファイルに音声データがありません。",
-  "err_sr_low": "サンプリングレートが低すぎます（{sr} Hz）。"
+  "err_sr_low": "サンプリングレートが低すぎます（{sr} Hz）。",
+  "log_key": "キー：{key}",
+  "log_key_fail": "キー検出失敗：{err}"
 }
