@@ -46,8 +46,30 @@ Feed it one mp3. It will:
 
 Grab the latest build from [Releases](https://github.com/sy405/AUDIO/releases):
 
-| File | Size | Notes |
-|---|---|---|
+### CPU version (recommended for most)
+
+| File | Size |
+|---|---|
+| **`Audio2FL-v1.1.exe`** | 203 MB |
+
+Double-click to run. First launch takes 30-60 seconds (unpacks to temp, splash screen shown).
+
+### CUDA version (NVIDIA GPU owners)
+
+| File | Size |
+|---|---|
+| `Audio2FL-CUDA-cu124.zip.001` ~ `.005` | 2.35 GB total (5 parts) |
+
+**Download all 5 parts** into one folder, then right-click `.001` -> 7-Zip -> Extract Here.
+That gives you `Audio2FL-CUDA.exe` (2.35 GB).
+
+**What the CUDA build gives you:**
+
+- Auto-detects NVIDIA GPU, falls back to CPU if absent
+- Bundles CUDA 12.4 + cuDNN 9 - no extra install needed
+- Separation speed: **18 s** on RTX 4090 vs **52 s** on CPU (30-second sample)
+
+---|---|---|
 | **`Audio2FL-v1.1.exe`** | 203 MB | Single-file build. Double-click to run (first launch takes 30-60s, splash screen shown) |
 | `Audio2FL-v1.0-win64.zip` | 241 MB | v1.0 folder build, starts fast |
 | `Audio2FL-v1.0-cpu-offline.zip` | 321 MB | v1.0 offline build (models bundled) |
